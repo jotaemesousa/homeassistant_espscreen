@@ -1,0 +1,225 @@
+# HA-HMI: Home Assistant's voice assistant with a wake word on the board, as Home Assistant entities (ESPHome
+# integration). Included by ha-hmi-espscreens.yaml; take the line out there to build without it. It answers on the
+# screen's speaker (the screen's Media Player) and listens on its microphone; the screen's Microphone switch mutes it.
+#
+#   Voice assistant              switch: listen for the wake word (off at first)
+#   okay_nabu, hey_glados        switches of ESPHome's micro_wake_word: which wake words count
+#   Wake word sensitivity        select
+#   Continued conversation       switch: after an answer that ends in a question, listen again without the wake word
+#   Ask the voice assistant      button: start a conversation without the wake word
+#
+# The device also appears as an Assist satellite in Home Assistant, where its pipeline is chosen. "Stop" ends an answer
+# while it is spoken. A finished timer wakes the screen, pulses the LED strip and fires the event
+# esphome.hahmi_timer_finished for an automation (there is no sound file on the board for a ring of its own). The
+# speaker and the microphone are claimed through the screen's audio owner (audio_owner.h) as VOICE: a session pauses
+# music, and a doorbell outranks it.
+globals:
+  - id: hahmi_question
+    type: bool
+    initial_value: 'false'
+  - id: hahmi_wake_word
+    type: std::string
+
+switch:
+  - platform: template
+    id: hahmi_voice_on
+    name: "Voice assistant"
+    icon: "mdi:account-voice"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: hahmi_listen
+    on_turn_off:
+      - voice_assistant.stop:
+      - micro_wake_word.stop:
+      - lambda: 'audio_owner::the().release(audio_owner::Side::BOTH, audio_owner::Role::VOICE);'
+  - platform: template
+    id: hahmi_continued
+    name: "Continued conversation"
+    icon: "mdi:chat-processing-outline"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+select:
+  - platform: template
+    name: "Wake word sensitivity"
+    icon: "mdi:tune-variant"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_option: "Slightly sensitive"
+    options: ["Slightly sensitive", "Moderately sensitive", "Very sensitive"]
+    on_value:
+      - lambda: |-
+          const uint8_t cutoff = x == "Very sensitive" ? 143 : x == "Moderately sensitive" ? 176 : 217;
+          id(okay_nabu).set_probability_cutoff(cutoff);
+          id(hey_glados).set_probability_cutoff(cutoff);
+
+button:
+  - platform: template
+    name: "Ask the voice assistant"
+    icon: "mdi:microphone-message"
+    on_press:
+      - script.execute:
+          id: hahmi_session
+          wake_word: ""
+
+script:
+  # Listen for the wake word while the switch is on, Home Assistant is connected and nothing above VOICE has the
+  # microphone; a doorbell that takes it stops the listening, and it starts again when the doorbell gives it back.
+  - id: hahmi_listen
+    then:
+      - if:
+          condition:
+            and:
+              - switch.is_on: hahmi_voice_on
+              - api.connected:
+          then:
+            - lambda: |-
+                audio_owner::Claim claim;
+                claim.role = audio_owner::Role::VOICE;
+                claim.lost = []() { id(va).request_stop(); id(mww).stop(); };
+                claim.regained = []() { if (id(hahmi_voice_on).state) id(mww).start(); };
+                if (audio_owner::the().claim(audio_owner::Side::IN, claim)) id(mww).start();
+  # A conversation: the screen lights, the speaker is claimed (music pauses), and the LED strip pulses while it listens.
+  - id: hahmi_session
+    parameters:
+      wake_word: string
+    then:
+      - button.press: wake_button
+      - lambda: |-
+          audio_owner::Claim claim;
+          claim.role = audio_owner::Role::VOICE;
+          claim.lost = []() { id(va).request_stop(); id(mww).stop(); };
+          claim.regained = []() { if (id(hahmi_voice_on).state) id(mww).start(); };
+          id(hahmi_wake_word) = wake_word;
+          if (!audio_owner::the().claim(audio_owner::Side::BOTH, claim)) id(hahmi_wake_word) = "-";
+      - if:
+          condition:
+            lambda: 'return id(hahmi_wake_word) != "-";'
+          then:
+            - voice_assistant.start:
+                wake_word: !lambda 'return wake_word;'
+                silence_detection: true
+
+voice_assistant:
+  id: va
+  microphone:
+    microphone: ts_microphone
+    gain_factor: 16
+    channels: 0
+    bits_per_sample: 16
+  media_player: ts_media_player
+  micro_wake_word: mww
+  noise_suppression_level: 2
+  auto_gain: 0dBFS
+  volume_multiplier: 1.0
+  on_client_connected:
+    - script.execute: hahmi_listen
+  on_client_disconnected:
+    - micro_wake_word.stop:
+    - lambda: 'audio_owner::the().release(audio_owner::Side::BOTH, audio_owner::Role::VOICE);'
+  on_listening:
+    - light.turn_on:
+        id: board_led_strip
+        red: 0.1
+        green: 0.4
+        blue: 1.0
+        brightness: 0.5
+        effect: Fast Pulse
+  on_stt_vad_end:
+    - light.turn_on:
+        id: board_led_strip
+        red: 0.6
+        green: 0.2
+        blue: 1.0
+        brightness: 0.4
+        effect: Slow Pulse
+  on_tts_start:
+    - lambda: 'id(hahmi_question) = !x.empty() && x.back() == ''?'';'
+    - micro_wake_word.enable_model: stop
+  on_end:
+    - light.turn_off: board_led_strip
+    - wait_until:
+        condition:
+          not:
+            media_player.is_announcing: ts_media_player
+        timeout: 60s
+    - micro_wake_word.disable_model: stop
+    - if:
+        condition:
+          lambda: 'return id(hahmi_question) && id(hahmi_continued).state && id(hahmi_wake_word) != "Stop";'
+        then:
+          - lambda: 'id(hahmi_question) = false;'
+          - delay: 300ms
+          - voice_assistant.start:
+              wake_word: !lambda 'return id(hahmi_wake_word);'
+              silence_detection: true
+        else:
+          - lambda: 'audio_owner::the().release(audio_owner::Side::OUT, audio_owner::Role::VOICE);'
+  on_error:
+    - light.turn_on:
+        id: board_led_strip
+        red: 1.0
+        green: 0.0
+        blue: 0.0
+        brightness: 0.5
+    - delay: 1s
+    - light.turn_off: board_led_strip
+  on_timer_finished:
+    - button.press: wake_button
+    - homeassistant.event:
+        event: esphome.hahmi_timer_finished
+        data:
+          name: !lambda 'return timer.name;'
+    - light.turn_on:
+        id: board_led_strip
+        red: 1.0
+        green: 0.5
+        blue: 0.0
+        brightness: 0.8
+        effect: Fast Pulse
+    - delay: 15s
+    - light.turn_off: board_led_strip
+
+micro_wake_word:
+  id: mww
+  stop_after_detection: false
+  microphone:
+    microphone: ts_microphone
+    gain_factor: 1
+    channels: 0
+    bits_per_sample: 16
+  models:
+    - model: okay_nabu
+      id: okay_nabu
+      internal: false
+    - model: https://raw.githubusercontent.com/Darkmadda/ha-v-pe/refs/heads/main/hey_glados.json
+      id: hey_glados
+      internal: false
+    - model: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
+      id: stop
+      internal: true
+  vad:
+  on_wake_word_detected:
+    - if:
+        condition:
+          lambda: 'return wake_word == "Stop";'
+        then:
+          - lambda: 'id(hahmi_wake_word) = "Stop";'
+          - media_player.stop:
+              id: ts_media_player
+              announcement: true
+          - voice_assistant.stop:
+        else:
+          - if:
+              condition:
+                voice_assistant.is_running:
+              then:
+                - voice_assistant.stop:
+              else:
+                - script.execute:
+                    id: hahmi_session
+                    wake_word: !lambda 'return wake_word;'

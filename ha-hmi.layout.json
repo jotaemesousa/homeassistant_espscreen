@@ -1,0 +1,827 @@
+{
+  "esp_screens_layout": 2,
+  "sourceGrid": {
+    "columns": 2,
+    "rows": 2
+  },
+  "layout": {
+    "title": "HA-HMI",
+    "homePageId": "58ccd3ae7e05e7fd",
+    "pages": [
+      {
+        "id": "58ccd3ae7e05e7fd",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "b3cac1ab44c5d287",
+            "content": {
+              "kind": "entity",
+              "entityId": "weather.forecast_home"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 2,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Tempo",
+              "presentation": "wide"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "0a92aada21e60674",
+            "content": {
+              "kind": "entity",
+              "entityId": "sensor.hmi_meal_today"
+            },
+            "placement": {
+              "row": 1,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Refeição hoje"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "cffce45b2f76a6b4",
+            "content": {
+              "kind": "entity",
+              "entityId": "sensor.hmi_meal_tomorrow"
+            },
+            "placement": {
+              "row": 1,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Refeição amanhã"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "823efae9f257439f",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Início"
+          },
+          "trailing": [
+            {
+              "id": "437ca9c6bc6d7d6b",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "90642cdf7572531e",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "478342f0a7b9b3d8",
+            "content": {
+              "kind": "entity",
+              "entityId": "switch.sonoffcableplug2_sonoff_basic_relay"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Escalfeta"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "f4621cab7b134e8e",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.jms_lamp_light"
+            },
+            "placement": {
+              "row": 0,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz Monitor"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "9d5e7b13f9524a37",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Sala"
+          },
+          "trailing": [
+            {
+              "id": "6a7fd52b2d959973",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "b987d10d7e6a816b",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "d4cfa288f526c8b7",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.ms105b_quartoteresa_dimmerch1"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz Quarto"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "d227b62a8a108a71",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.ms105b_quartoteresa_dimmerch2"
+            },
+            "placement": {
+              "row": 0,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz WC"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "7737154e240e5a56",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.girafa_girafa_light"
+            },
+            "placement": {
+              "row": 1,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Girafa"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "7dee5e5c0d0a214e",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.girafa_girafa_light2"
+            },
+            "placement": {
+              "row": 1,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Girafa 2"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "5596d67de53b1ea6",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Quarto Teté"
+          },
+          "trailing": [
+            {
+              "id": "742065eba0ec80d0",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "4193fdab47a2527a",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "7851948f249a369f",
+            "content": {
+              "kind": "entity",
+              "entityId": "switch.wallplug3"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Tomada"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "bce0e65cd738fe55",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Quarto Teté"
+          },
+          "trailing": [
+            {
+              "id": "7715ddc3faae0dd0",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "2b160036fa741c51",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "74b022ce4569d204",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.benilamp_light"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Lua"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "0bd173a723dc8673",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.ikealamp1"
+            },
+            "placement": {
+              "row": 0,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Candeeiro"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "4d1820b5a6ceb256",
+            "content": {
+              "kind": "entity",
+              "entityId": "switch.sonoffcableplug_sonoff_basic_relay"
+            },
+            "placement": {
+              "row": 1,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Tomada"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "fbfd8dc14bce5074",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Quarto Tixa João"
+          },
+          "trailing": [
+            {
+              "id": "4b706bb6f9485b04",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "0afb96dbdfd55482",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "83c1c4592ee01f2d",
+            "content": {
+              "kind": "entity",
+              "entityId": "binary_sensor.porta_varanda_contact"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Varanda"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "9ae73143e0bf114c",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Hall"
+          },
+          "trailing": [
+            {
+              "id": "2df47c48e1bf8dc7",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "521809894df06aa7",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "67816a68c71b2233",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.luz_garagem"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz Carro"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "ab2274147b76d89f",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.luz_garagem_tasmotaconsumos"
+            },
+            "placement": {
+              "row": 0,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz Janela"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "a692b23ee3a36648",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.printerplug_desklight"
+            },
+            "placement": {
+              "row": 1,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz Secretária"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "904f8861be26a6e2",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.lamp2"
+            },
+            "placement": {
+              "row": 1,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz Gym"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "99d410c62e079d84",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Garagem"
+          },
+          "trailing": [
+            {
+              "id": "d4ad5806dfb9b0ab",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "41eca61838679d5f",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "505216581e115b59",
+            "content": {
+              "kind": "entity",
+              "entityId": "switch.pizero2w_wallplug"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Printer"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "a6d87bd4711da2b4",
+            "content": {
+              "kind": "entity",
+              "entityId": "binary_sensor.0x00124b002344c38d_contact"
+            },
+            "placement": {
+              "row": 0,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Porta"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "b8f8c9344ad65c9f",
+            "content": {
+              "kind": "entity",
+              "entityId": "binary_sensor.portao_garagem_contact"
+            },
+            "placement": {
+              "row": 1,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Portão"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "27f7292e0e4b653e",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Garagem"
+          },
+          "trailing": [
+            {
+              "id": "602e3c7c4879b864",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "11773f4eaaf0434b",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "8ccf828098fd08a7",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.sonnof_dual_r2"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz Portão"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "65a6a52207f2977d",
+            "content": {
+              "kind": "entity",
+              "entityId": "light.luz_porta_garagem"
+            },
+            "placement": {
+              "row": 0,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Luz Porta"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "e08c090c3cd45525",
+            "content": {
+              "kind": "entity",
+              "entityId": "sensor.meshtastic_jms1_1800938498_environment_temperature"
+            },
+            "placement": {
+              "row": 1,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Temperatura"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "eee0a0a81ff2a8ce",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "Exterior"
+          },
+          "trailing": [
+            {
+              "id": "cf6c8e828b9a9bc9",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "c8a4da36df2da374",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "c840c9516c41b254",
+            "content": {
+              "kind": "entity",
+              "entityId": "button.hacontrol_tv_power"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Ligar"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "07d0ce1bbc72f89f",
+            "content": {
+              "kind": "entity",
+              "entityId": "button.hacontrol_tv_mute"
+            },
+            "placement": {
+              "row": 0,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Mute"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "50cae9bc7bf81253",
+            "content": {
+              "kind": "entity",
+              "entityId": "button.hacontrol_tv_volume_up"
+            },
+            "placement": {
+              "row": 1,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Volume +"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "a443bfffe89c5eb9",
+            "content": {
+              "kind": "entity",
+              "entityId": "button.hacontrol_tv_volume_down"
+            },
+            "placement": {
+              "row": 1,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Volume -"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "aed87c70a7a93cff",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "TV"
+          },
+          "trailing": [
+            {
+              "id": "7099fc8b61c64bb8",
+              "type": "clock"
+            }
+          ]
+        }
+      },
+      {
+        "id": "4861d2d0b05f7931",
+        "navigation": {
+          "excludeFromPagination": false
+        },
+        "tiles": [
+          {
+            "id": "1d0e8c7c80de013d",
+            "content": {
+              "kind": "entity",
+              "entityId": "button.hacontrol_tv_channel_up"
+            },
+            "placement": {
+              "row": 0,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Canal +"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "af0253c192f24488",
+            "content": {
+              "kind": "entity",
+              "entityId": "button.hacontrol_tv_channel_down"
+            },
+            "placement": {
+              "row": 0,
+              "column": 1,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Canal -"
+            },
+            "interaction": {}
+          },
+          {
+            "id": "042b695d1d7ec43f",
+            "content": {
+              "kind": "entity",
+              "entityId": "button.hacontrol_tv_source"
+            },
+            "placement": {
+              "row": 1,
+              "column": 0,
+              "columns": 1,
+              "rows": 1
+            },
+            "appearance": {
+              "label": "Fonte"
+            },
+            "interaction": {}
+          }
+        ],
+        "topbar": {
+          "leading": [
+            {
+              "id": "cc7c491733d329e7",
+              "kind": "home"
+            }
+          ],
+          "title": {
+            "source": "text",
+            "text": "TV"
+          },
+          "trailing": [
+            {
+              "id": "2b2ce89df1f4236d",
+              "type": "clock"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

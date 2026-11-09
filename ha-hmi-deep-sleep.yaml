@@ -1,0 +1,97 @@
+# HA-HMI: deep sleep, as Home Assistant entities (ESPHome integration). Included by ha-hmi-espscreens.yaml; take the line
+# out there to build without it.
+#
+#   Deep sleep             switch: on lets the board sleep once it has been in standby long enough (off at first)
+#   Deep sleep after       number: minutes in standby before it sleeps
+#   Deep sleep now         button: sleep right away
+#
+# Asleep, the board is off Wi-Fi: Home Assistant shows it unavailable and cannot wake it. The button (GPIO0) or the touch
+# pad (GPIO3) wakes it, and it starts again from the beginning. It never sleeps during an update, or while the speaker is
+# in use (music, an announcement, the voice assistant). The 3.3 V rail of the display and the other parts is switched
+# off while it sleeps, as ha-hmi.yaml did.
+esphome:
+  on_boot:
+    # Before the hardware is set up: let go of the rail's pin, which the sleep held high (rail off).
+    - priority: 1000
+      then:
+        - lambda: |-
+            gpio_hold_dis(GPIO_NUM_21);
+            gpio_deep_sleep_hold_dis();
+
+globals:
+  - id: hahmi_dimmed_since
+    type: uint32_t
+    initial_value: '0'
+
+deep_sleep:
+  id: hahmi_deep_sleep
+  touch_wakeup: true
+  esp32_ext1_wakeup:
+    mode: ANY_LOW
+    pins:
+      - number: GPIO0
+        allow_other_uses: true
+        ignore_strapping_warning: true
+
+binary_sensor:
+  - id: !extend board_touch_pad
+    wakeup_threshold: 1500
+
+switch:
+  - platform: template
+    id: hahmi_deep_sleep_on
+    name: "Deep sleep"
+    icon: "mdi:power-sleep"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+number:
+  - platform: template
+    id: hahmi_deep_sleep_after
+    name: "Deep sleep after"
+    icon: "mdi:timer-sand"
+    entity_category: config
+    unit_of_measurement: min
+    min_value: 1
+    max_value: 120
+    step: 1
+    initial_value: 5
+    optimistic: true
+    restore_value: true
+    mode: box
+
+button:
+  - platform: template
+    name: "Deep sleep now"
+    icon: "mdi:sleep"
+    entity_category: config
+    on_press:
+      - script.execute: hahmi_power_off
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          if (!id(display_dimmed)) { id(hahmi_dimmed_since) = 0; return; }
+          if (id(hahmi_dimmed_since) == 0) id(hahmi_dimmed_since) = millis();
+          if (!id(hahmi_deep_sleep_on).state) return;
+          if (ota_status::now.phase == ota_status::Phase::running) return;
+          if (audio_owner::the().held(audio_owner::Side::OUT)) return;
+          if (millis() - id(hahmi_dimmed_since) < (uint32_t) id(hahmi_deep_sleep_after).state * 60000u) return;
+          ESP_LOGI("hahmi", "Deep sleep after %.0f min in standby", id(hahmi_deep_sleep_after).state);
+          id(hahmi_power_off).execute();
+
+script:
+  - id: hahmi_power_off
+    mode: single
+    then:
+      - light.turn_off: back_light
+      - light.turn_off: board_led_strip
+      - delay: 200ms
+      - switch.turn_off: board_rail_3v3
+      - delay: 200ms
+      - lambda: |-
+          gpio_hold_en(GPIO_NUM_21);
+          gpio_deep_sleep_hold_en();
+      - deep_sleep.enter: hahmi_deep_sleep

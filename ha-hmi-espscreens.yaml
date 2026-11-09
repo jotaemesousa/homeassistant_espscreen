@@ -1,0 +1,78 @@
+# The HA-HMI on ESP Screens: a local profile of one screen (git-ignored, like the other YAML files in the root).
+#
+# The firmware is packages/core.yaml and the lab board packages/boards/lab-hahmi.yaml; the tiles come from ESP Screen
+# Manager while the screen runs. The name stays the one ha-hmi.yaml had, so Home Assistant keeps the same ESPHome device
+# and this build goes over the air to ha-hmi.local. Put the api_encryption_key and ota_password ha-hmi.yaml used, and
+# the Wi-Fi, in secrets.yaml next to this file (secrets.yaml.example).
+#
+#   esphome run ha-hmi-espscreens.yaml
+substitutions:
+  FONT_DIR: "fonts"
+  DEVICE_NAME: "ha-hmi"
+  DEVICE_FRIENDLY_NAME: "Home Assistant Control HMI"
+
+packages:
+  core: !include packages/core.yaml
+  board: !include packages/boards/lab-hahmi.yaml
+  # Options as Home Assistant entities; take a line out to build without it.
+  deep_sleep: !include ha-hmi-deep-sleep.yaml
+  voice: !include ha-hmi-voice.yaml
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [xpt2046, flash_layout, smart_display]
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+    allow_partition_access: true
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Mains-powered panel: no modem sleep, so HA updates and OTA arrive without beacon latency.
+  power_save_mode: none
+
+# The buttons of the Samsung TV's remote, sent by the board's IR transmitter.
+button:
+  - platform: template
+    name: TV Power
+    icon: mdi:power
+    on_press:
+      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E040BF, nbits: 32}
+  - platform: template
+    name: TV Volume Up
+    icon: mdi:volume-plus
+    on_press:
+      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E0E01F, nbits: 32}
+  - platform: template
+    name: TV Volume Down
+    icon: mdi:volume-minus
+    on_press:
+      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E0D02F, nbits: 32}
+  - platform: template
+    name: TV Mute
+    icon: mdi:volume-mute
+    on_press:
+      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E0F00F, nbits: 32}
+  - platform: template
+    name: TV Channel Up
+    icon: mdi:arrow-up-bold
+    on_press:
+      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E048B7, nbits: 32}
+  - platform: template
+    name: TV Channel Down
+    icon: mdi:arrow-down-bold
+    on_press:
+      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E008F7, nbits: 32}
+  - platform: template
+    name: TV Source
+    icon: mdi:import
+    on_press:
+      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E0807F, nbits: 32}

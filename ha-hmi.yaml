@@ -1,0 +1,5476 @@
+substitutions:
+  I2SOUT_SAMPLE_RATE: 48000
+  I2SIN_SAMPLE_RATE: 16000
+  voice_assist_idle_phase_id: '1'
+  voice_assist_listening_phase_id: '2'
+  voice_assist_thinking_phase_id: '3'
+  voice_assist_replying_phase_id: '4'
+  voice_assist_not_ready_phase_id: '10'
+  voice_assist_error_phase_id: '11'
+  voice_assist_muted_phase_id: '12'
+  LCD_CS: GPIO40
+  LCD_DC: GPIO42
+  LCD_RESET: GPIO39
+  LCD_TOUCH_CS: GPIO18
+  LCD_SDO: GPIO47
+  LCD_SDI: GPIO41
+  LCD_SCK: GPIO38
+  LCD_BL: GPIO46
+  EPR_CS: GPIO16
+  EPR_DC: GPIO11
+  EPR_RESET: GPIO15
+  EPR_BUSY: GPIO9
+  EPR_SDO: GPIO10
+  EPR_SCK: GPIO17
+  EPR_DETECT: GPIO1
+  LED_ADDRESSABLE: GPIO48
+  I2SOUT_DO: GPIO12
+  I2SOUT_LRCLK: GPIO14
+  I2SOUT_BCLK: GPIO13
+  I2SIN_SD: GPIO7
+  I2SIN_SCK: GPIO6
+  I2SIN_WS: GPIO5
+  BUTTON1: GPIO0
+  PIR: GPIO2
+  BATTERY_VOLTAGE: GPIO4
+  ENABLE_3V3: GPIO21
+  TOUCH_BUTTON: GPIO3
+  IR_TX: GPIO8
+  IR_RX: GPIO20
+  NUM_LEDS: '6'
+esphome:
+  on_boot:
+    - priority: 600.0
+      then:
+        - lambda: !lambda |-
+            gpio_hold_dis(GPIO_NUM_21);
+            gpio_deep_sleep_hold_dis();
+        - light.turn_on:
+            id: back_light
+            state: true
+        - delay: 8s
+        - lvgl.widget.hide:
+            - id: boot_screen
+        - script.execute:
+            id: idle_deep_sleep
+        - light.turn_on:
+            id: led_strip
+            blue: 0.0
+            red: 0.6
+            green: 0.1
+            brightness: 0.5
+            effect: scanning
+            state: true
+        - delay: 30s
+        - if:
+            condition:
+              lambda: !lambda |-
+                return id(init_in_progress);
+            then:
+              - lambda: !lambda |-
+                  id(init_in_progress) = false;
+              - light.turn_off:
+                  id: led_strip
+                  state: false
+  name: ha-hmi
+  friendly_name: Home Assistant Control HMI
+  name_add_mac_suffix: false
+  min_version: 2026.10.1
+  build_path: build/ha-hmi
+  platformio_options: {}
+  build_flags: []
+  environment_variables: {}
+  includes: []
+  includes_c: []
+  libraries: []
+  merge_warnings: true
+  debug_scheduler: false
+  suspend_loop: false
+  areas: []
+  devices: []
+esp32:
+  framework:
+    type: esp-idf
+    version: 5.5.6
+    sdkconfig_options:
+      CONFIG_ESP32S3_DATA_CACHE_64KB: y
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: y
+      CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB: y
+      CONFIG_SPIRAM_RODATA: y
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_BT_ALLOCATION_FROM_SPIRAM_FIRST: y
+      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: y
+      CONFIG_ESP_BROWNOUT_DET: y
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: y
+      CONFIG_MBEDTLS_SSL_PROTO_TLS1_3: y
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: y
+      CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG: n
+      CONFIG_ESP_CONSOLE_SECONDARY_NONE: n
+    log_level: ERROR
+    advanced:
+      compiler_optimization: SIZE
+      enable_idf_experimental_features: false
+      enable_lwip_assert: true
+      ignore_efuse_custom_mac: false
+      ignore_efuse_mac_crc: false
+      sram1_as_iram: false
+      enable_lwip_mdns_queries: true
+      enable_lwip_bridge_interface: false
+      enable_lwip_tcpip_core_locking: true
+      enable_lwip_check_thread_safety: true
+      disable_libc_locks_in_iram: true
+      disable_vfs_support_termios: true
+      disable_vfs_support_select: true
+      disable_vfs_support_dir: true
+      freertos_in_iram: false
+      ringbuf_in_iram: false
+      heap_in_iram: false
+      execute_from_psram: false
+      loop_task_stack_size: 8192
+      enable_ota_rollback: true
+      enable_ota_downgrade_protection: false
+      use_full_certificate_bundle: false
+      include_builtin_idf_components: []
+      enable_full_printf: false
+      disable_debug_stubs: true
+      disable_ocd_aware: true
+      disable_usb_serial_jtag_secondary: true
+      disable_dev_null_vfs: true
+      disable_mbedtls_peer_cert: true
+      disable_mbedtls_pkcs7: true
+      disable_mbedtls_tls: true
+      disable_mbedtls_tls_server: true
+      disable_mbedtls_tls_extras: true
+      disable_regi2c_in_iram: true
+      adc_oneshot_in_iram: false
+      disable_fatfs: true
+    components: []
+  board: 4d_systems_esp32s3_gen4_r8n16
+  cpu_frequency: 240MHZ
+  flash_size: 16MB
+  watchdog_timeout: 5s
+  variant: ESP32S3
+globals:
+  - id: init_in_progress
+    type: bool
+    restore_value: false
+    initial_value: 'true'
+  - id: voice_assistant_phase
+    type: int
+    restore_value: false
+    initial_value: '10'
+  - id: is_tts_active
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: question_flag
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: last_wake_word
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  - id: groc_active
+    type: std::vector<std::string>
+    restore_value: false
+  - id: groc_catalog
+    type: std::vector<std::string>
+    restore_value: false
+  - id: rail_was_off
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: epaper_mode
+    type: int
+    restore_value: true
+    initial_value: '0'
+    update_interval: 1s
+  - id: meal_today
+    type: std::string
+    restore_value: false
+  - id: meal_tomorrow
+    type: std::string
+    restore_value: false
+  - id: weather_temp_now
+    type: float
+    restore_value: false
+    initial_value: '0'
+  - id: weather_cond_now
+    type: std::string
+    restore_value: false
+  - id: weather_fc
+    type: std::string
+    restore_value: false
+logger:
+  baud_rate: 115200
+  hardware_uart: UART0
+  level: DEBUG
+  tx_buffer_size: 512
+  deassert_rts_dtr: false
+  task_log_buffer_size: 768
+  logs: {}
+  runtime_tag_levels: false
+api:
+  encryption:
+    key: <removed>
+  on_client_connected:
+    then:
+      - if:
+          condition:
+            lambda: !lambda |-
+              return (0 == client_info.find("Home Assistant "));
+          then:
+            - lvgl.widget.show:
+                - id: lbl_hastatus
+  on_client_disconnected:
+    then:
+      - if:
+          condition:
+            lambda: !lambda |-
+              return (0 == client_info.find("Home Assistant "));
+          then:
+            - lvgl.widget.hide:
+                - id: lbl_hastatus
+  actions:
+    - action: start_va
+      then:
+        - voice_assistant.start:
+            silence_detection: true
+            wake_word: ''
+      variables: {}
+      supports_response: none
+    - action: stop_va
+      then:
+        - voice_assistant.stop: {}
+      variables: {}
+      supports_response: none
+  port: 6053
+  reboot_timeout: 15min
+  batch_delay: 100ms
+  custom_services: false
+  homeassistant_services: false
+  homeassistant_states: false
+  listen_backlog: 4
+  max_connections: 5
+  max_send_queue: 8
+ota:
+  - platform: web_server
+  - platform: esphome
+    password: <removed>
+    version: 2
+    port: 3232
+    allow_partition_access: false
+wifi:
+  fast_connect:
+    enabled: true
+    storage: flash
+  on_connect:
+    then:
+      - light.turn_off:
+          id: led_strip
+          state: false
+  on_disconnect:
+    then:
+      - light.turn_on:
+          id: led_strip
+          blue: 0.0
+          red: 1.0
+          green: 0.0
+          brightness: 0.98
+          effect: Fast Pulse
+          state: true
+  ap:
+    ssid: <removed>
+    password: <removed>
+    ap_timeout: 90s
+  domain: .local
+  reboot_timeout: 15min
+  power_save_mode: LIGHT
+  enable_btm: false
+  enable_rrm: false
+  passive_scan: false
+  enable_on_boot: true
+  post_connect_roaming: true
+  min_auth_mode: WPA2
+  networks:
+    - ssid: !secret 'wifi_ssid'
+      password: !secret 'wifi_password'
+      priority: 0
+  use_address: ha-hmi.local
+captive_portal:
+  compression: gzip
+psram:
+  mode: octal
+  speed: 80MHZ
+  enable_ecc: false
+  disabled: false
+  ignore_not_found: true
+sensor:
+  - platform: wifi_signal
+    name: WiFi Signal
+    id: wifi_signal_dbm
+    update_interval: 60s
+    disabled_by_default: false
+    force_update: false
+    unit_of_measurement: dBm
+    accuracy_decimals: 0
+    device_class: signal_strength
+    state_class: measurement
+    entity_category: diagnostic
+  - platform: adc
+    pin:
+      number: 4
+      mode:
+        input: true
+        output: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    name: Battery Voltage
+    id: battery_voltage
+    attenuation: 12db
+    update_interval: 60s
+    filters:
+      - multiply: 1.58
+      - calibrate_linear:
+          datapoints:
+            - from: 0.0
+              to: 0.0
+            - from: 3.2
+              to: 4.2
+          method: least_squares
+    disabled_by_default: false
+    force_update: false
+    unit_of_measurement: V
+    accuracy_decimals: 2
+    device_class: voltage
+    state_class: measurement
+    raw: false
+    samples: 1
+    sampling_mode: avg
+  - platform: template
+    name: Battery Percentage
+    id: battery_percentage
+    lambda: !lambda |-
+      float voltage = id(battery_voltage).state;
+      // Map 3.3V (empty) to 4.2V (full)
+      if (voltage >= 4.2) return 100.0;
+      if (voltage <= 3.3) return 0.0;
+      return (voltage - 3.3) * (100.0 / (4.2 - 3.3));
+    unit_of_measurement: '%'
+    update_interval: 60s
+    on_value:
+      - then:
+          - lvgl.label.update:
+              id:
+                - id: lbl_battery_status
+              text: !lambda |-
+                static char buf[16];
+                std::string icon;
+                if (x == 100.0) {
+                    icon = "\U000F0079";  // mdi-battery (full)
+                } else if (x > 90) {
+                    icon = "\U000F0082"; // mdi-battery-90
+                } else if (x > 80) {
+                    icon = "\U000F0081"; // mdi-battery-80
+                } else if (x > 70) {
+                    icon = "\U000F0080"; // mdi-battery-70
+                } else if (x > 60) {
+                    icon = "\U000F007F"; // mdi-battery-60
+                } else if (x > 50) {
+                    icon = "\U000F007E"; // mdi-battery-50
+                } else if (x > 40) {
+                    icon = "\U000F007D"; // mdi-battery-40
+                } else if (x > 30) {
+                    icon = "\U000F007C"; // mdi-battery-30
+                } else if (x > 20) {
+                    icon = "\U000F007B"; // mdi-battery-20
+                } else if (x > 10) {
+                    icon = "\U000F007A"; // mdi-battery-10
+                } else if (x > 0) {
+                    icon = "\U000F008E"; // mdi-battery-outline
+                } else {
+                    icon = "\U000F0091"; // mdi-battery-unknown
+                }
+                snprintf(buf, sizeof(buf), "%s %d%%", icon.c_str(), (int)round(x));
+                return buf;
+    disabled_by_default: false
+    force_update: false
+    accuracy_decimals: 1
+  - platform: homeassistant
+    id: sns_weather_temperature
+    entity_id: weather.forecast_home
+    attribute: temperature
+    on_value:
+      - then:
+          - lvgl.label.update:
+              id:
+                - id: lbl_weather_temp
+              text: !lambda |-
+                static char buf[12];
+                snprintf(buf, sizeof(buf), "%.0f°", x);
+                return buf;
+          - lambda: !lambda |-
+              id(weather_temp_now) = x;
+              char b[16];
+              snprintf(b, sizeof(b), "%.0f\u00B0C", x);
+              lv_label_set_text(id(lbl_ep_weather_now), b);
+    disabled_by_default: false
+    force_update: false
+    accuracy_decimals: 1
+    internal: true
+    name: sns_weather_temperature
+  - platform: homeassistant
+    id: sns_weather_humidity
+    entity_id: weather.forecast_home
+    attribute: humidity
+    on_value:
+      - then:
+          - lvgl.label.update:
+              id:
+                - id: lbl_weather_humidity
+              text: !lambda |-
+                static char buf[24];
+                snprintf(buf, sizeof(buf), "\U000F058E %.0f%%", x);
+                return buf;
+    disabled_by_default: false
+    force_update: false
+    accuracy_decimals: 1
+    internal: true
+    name: sns_weather_humidity
+  - platform: homeassistant
+    id: sns_weather_wind
+    entity_id: weather.forecast_home
+    attribute: wind_speed
+    on_value:
+      - then:
+          - lvgl.label.update:
+              id:
+                - id: lbl_weather_wind
+              text: !lambda |-
+                static char buf[28];
+                snprintf(buf, sizeof(buf), "\U000F059D %.0f km/h", x);
+                return buf;
+    disabled_by_default: false
+    force_update: false
+    accuracy_decimals: 1
+    internal: true
+    name: sns_weather_wind
+  - platform: homeassistant
+    id: sns_outside_temperature
+    entity_id: sensor.meshtastic_jms1_1800938498_environment_temperature
+    on_value:
+      - then:
+          - lvgl.label.update:
+              id:
+                - id: lbl_weather_outside
+              text: !lambda |-
+                static char buf[24];
+                snprintf(buf, sizeof(buf), "\U000F050F %.1f°", x);
+                return buf;
+    disabled_by_default: false
+    force_update: false
+    accuracy_decimals: 1
+    internal: true
+    name: sns_outside_temperature
+time:
+  - platform: sntp
+    on_time:
+      - hours:
+          - 2
+          - 3
+          - 4
+          - 5
+        minutes:
+          - 5
+        seconds:
+          - 0
+        then:
+          - switch.turn_on:
+              id: switch_antiburn
+      - hours:
+          - 2
+          - 3
+          - 4
+          - 5
+        minutes:
+          - 35
+        seconds:
+          - 0
+        then:
+          - switch.turn_off:
+              id: switch_antiburn
+    update_interval: 15min
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+      - 2.pool.ntp.org
+  - platform: homeassistant
+    id: ha_time
+    update_interval: 15min
+light:
+  - platform: esp32_rmt_led_strip
+    id: led_strip
+    name: ''
+    disabled_by_default: true
+    entity_category: config
+    pin:
+      number: 48
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    default_transition_length: 0s
+    chipset: SK6812
+    num_leds: 6
+    rmt_symbols: 48
+    effects:
+      - pulse:
+          name: Slow Pulse
+          transition_length: 250ms
+          update_interval: 250ms
+          min_brightness: 0.5
+          max_brightness: 1.0
+      - pulse:
+          name: Fast Pulse
+          transition_length: 100ms
+          update_interval: 100ms
+          min_brightness: 0.5
+          max_brightness: 1.0
+      - addressable_scan:
+          name: Scanning
+          move_interval: 120ms
+          scan_width: 1
+      - pulse:
+          name: Waiting for wake word
+          min_brightness: 0.15
+          max_brightness: 0.35
+          transition_length: 3s
+          update_interval: 3s
+    resume_effect: false
+    gamma_correct: 2.8
+    flash_transition_length: 0s
+    use_psram: true
+    reset_high: 0us
+    reset_low: 0us
+    channel_colors: GRB
+  - platform: monochromatic
+    output: LedLcd
+    icon: mdi:television
+    name: Display Backlight
+    id: back_light
+    restore_mode: ALWAYS_ON
+    disabled_by_default: false
+    resume_effect: false
+    gamma_correct: 2.8
+    default_transition_length: 1s
+    flash_transition_length: 0s
+button:
+  - platform: restart
+    name: reboot
+    id: button_reboot
+    disabled_by_default: false
+    icon: mdi:restart
+    entity_category: config
+    device_class: restart
+  - platform: template
+    name: TV Power
+    id: ir_tv_power
+    icon: mdi:power
+    on_press:
+      - then:
+          - remote_transmitter.transmit_samsung:
+              data: 0xE0E040BF
+              nbits: 32
+    disabled_by_default: false
+  - platform: template
+    name: TV Volume Up
+    id: ir_tv_volume_up
+    icon: mdi:volume-plus
+    on_press:
+      - then:
+          - remote_transmitter.transmit_samsung:
+              data: 0xE0E0E01F
+              nbits: 32
+    disabled_by_default: false
+  - platform: template
+    name: TV Volume Down
+    id: ir_tv_volume_down
+    icon: mdi:volume-minus
+    on_press:
+      - then:
+          - remote_transmitter.transmit_samsung:
+              data: 0xE0E0D02F
+              nbits: 32
+    disabled_by_default: false
+  - platform: template
+    name: TV Mute
+    id: ir_tv_mute
+    icon: mdi:volume-mute
+    on_press:
+      - then:
+          - remote_transmitter.transmit_samsung:
+              data: 0xE0E0F00F
+              nbits: 32
+    disabled_by_default: false
+  - platform: template
+    name: TV Channel Up
+    id: ir_tv_channel_up
+    icon: mdi:arrow-up-bold
+    on_press:
+      - then:
+          - remote_transmitter.transmit_samsung:
+              data: 0xE0E048B7
+              nbits: 32
+    disabled_by_default: false
+  - platform: template
+    name: TV Channel Down
+    id: ir_tv_channel_down
+    icon: mdi:arrow-down-bold
+    on_press:
+      - then:
+          - remote_transmitter.transmit_samsung:
+              data: 0xE0E008F7
+              nbits: 32
+    disabled_by_default: false
+  - platform: template
+    name: TV Source
+    id: ir_tv_source
+    icon: mdi:import
+    on_press:
+      - then:
+          - remote_transmitter.transmit_samsung:
+              data: 0xE0E0807F
+              nbits: 32
+    disabled_by_default: false
+  - platform: template
+    name: Add E-paper
+    id: add_epaper
+    icon: mdi:book-open-page-variant
+    entity_category: config
+    on_press:
+      - then:
+          - script.execute:
+              id: reinit_epaper
+    disabled_by_default: false
+image:
+  - platform: file
+    file: /data/image/ec9f243e
+    id: boot_logo
+    resize:
+      - 200
+      - 200
+    type: RGB565
+    transparency: alpha_channel
+    dither: NONE
+    invert_alpha: false
+    byte_order: LITTLE_ENDIAN
+switch:
+  - platform: gpio
+    name: Enable 3.3V
+    id: enable_3v3
+    pin:
+      number: 21
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    inverted: true
+    restore_mode: ALWAYS_ON
+    on_turn_off:
+      - then:
+          - lambda: !lambda |-
+              id(rail_was_off) = true;
+    on_turn_on:
+      - then:
+          - if:
+              condition:
+                lambda: !lambda |-
+                  return id(rail_was_off);
+              then:
+                - lambda: !lambda |-
+                    id(rail_was_off) = false;
+                - delay: 100ms
+                - script.execute:
+                    id: reinit_displays
+    disabled_by_default: false
+    interlock_wait_time: 0ms
+  - platform: template
+    name: Antiburn
+    id: switch_antiburn
+    icon: mdi:television-shimmer
+    optimistic: true
+    entity_category: config
+    turn_on_action:
+      then:
+        - logger.log:
+            format: Starting Antiburn
+            args: []
+            level: DEBUG
+            tag: main
+        - if:
+            condition:
+              lvgl.is_paused:
+                lvgl_id: lvgl_lcd_id
+            then:
+              - lvgl.resume:
+                  lvgl_id: lvgl_lcd_id
+              - lvgl.widget.redraw:
+                  lvgl_id: lvgl_lcd_id
+        - lvgl.pause:
+            show_snow: true
+            lvgl_id: lvgl_lcd_id
+    turn_off_action:
+      then:
+        - logger.log:
+            format: Stopping Antiburn
+            args: []
+            level: DEBUG
+            tag: main
+        - if:
+            condition:
+              lvgl.is_paused:
+                lvgl_id: lvgl_lcd_id
+            then:
+              - lvgl.resume:
+                  lvgl_id: lvgl_lcd_id
+              - lvgl.widget.redraw:
+                  lvgl_id: lvgl_lcd_id
+    disabled_by_default: false
+    restore_mode: ALWAYS_OFF
+    assumed_state: false
+  - platform: template
+    name: Enable Voice Assistant
+    id: voice_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    icon: mdi:assistant
+    on_turn_on:
+      - then:
+          - if:
+              condition:
+                lambda: !lambda |-
+                  return !id(init_in_progress);
+              then:
+                - lambda: !lambda |-
+                    id(voice_assistant_phase) = 1;
+                - lvgl.widget.update:
+                    id:
+                      - id: voice_toggle_btn
+                    state:
+                      checked: true
+                - if:
+                    condition:
+                      not:
+                        and:
+                          - voice_assistant.is_running: {}
+                    then:
+                      - micro_wake_word.start: {}
+                      - light.turn_on:
+                          id: led_strip
+                          blue: 0.15
+                          red: 0.0
+                          green: 0.15
+                          brightness: 0.2
+                          effect: Slow Pulse
+                          state: true
+    on_turn_off:
+      - then:
+          - if:
+              condition:
+                lambda: !lambda |-
+                  return !id(init_in_progress);
+              then:
+                - voice_assistant.stop: {}
+                - micro_wake_word.stop: {}
+                - lambda: !lambda |-
+                    id(voice_assistant_phase) = 12;
+                - lvgl.widget.update:
+                    id:
+                      - id: voice_toggle_btn
+                    state:
+                      checked: false
+                - light.turn_off:
+                    id: led_strip
+                    state: false
+    disabled_by_default: false
+    assumed_state: false
+  - platform: template
+    name: Ring Timer
+    id: timer_ringing
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    on_turn_off:
+      - then:
+          - media_player.stop:
+              id: external_media_player
+              announcement: true
+    on_turn_on:
+      - then:
+          - while:
+              condition:
+                switch.is_on:
+                  id: timer_ringing
+              then:
+                - media_player.speaker.play_on_device_media_file:
+                    id: external_media_player
+                    media_file: alarm_sound
+                    announcement: true
+                    enqueue: false
+                - wait_until:
+                    condition:
+                      media_player.is_announcing:
+                        id: external_media_player
+                - wait_until:
+                    condition:
+                      not:
+                        media_player.is_announcing:
+                          id: external_media_player
+                - delay: 1000ms
+    disabled_by_default: false
+    assumed_state: false
+  - platform: template
+    name: Continued Conversation
+    id: continued_conversation_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    icon: mdi:chat-processing-outline
+    disabled_by_default: false
+    assumed_state: false
+  - platform: template
+    name: Continued Conversation+
+    id: extended_dialog
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: mdi:chat-plus-outline
+    disabled_by_default: false
+    assumed_state: false
+esp32_touch:
+  setup_mode: false
+  measurement_duration: 250us
+  sleep_duration: 500us
+  low_voltage_reference: 0.5V
+  high_voltage_reference: 2.7V
+binary_sensor:
+  - platform: esp32_touch
+    name: Touch Button
+    pin: 3
+    threshold: 1000
+    wakeup_threshold: 1500
+    disabled_by_default: false
+  - platform: gpio
+    pin:
+      number: 2
+      mode:
+        input: true
+        output: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    id: pir_motion
+    name: Motion
+    device_class: motion
+    on_press:
+      - then:
+          - script.execute:
+              id: wake_display
+          - script.execute:
+              id: idle_deep_sleep
+    disabled_by_default: false
+    use_interrupt: true
+    interrupt_type: ANY
+  - platform: gpio
+    id: epaper_present
+    name: E-paper present
+    device_class: connectivity
+    pin:
+      number: 1
+      mode:
+        input: true
+        pullup: true
+        output: false
+        open_drain: false
+        pulldown: false
+      inverted: true
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    filters:
+      - delayed_on: 250ms
+    on_press:
+      - then:
+          - script.execute:
+              id: reinit_epaper
+    disabled_by_default: false
+    use_interrupt: true
+    interrupt_type: ANY
+  - platform: homeassistant
+    id: light_quarto_tete_ha_bsens
+    entity_id: light.ms105b_quartoteresa_dimmerch1
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_quarto_tete_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_quarto_tete_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_quarto_tete_ha_bsens
+  - platform: homeassistant
+    id: light_wc_tete_ha_bsens
+    entity_id: light.ms105b_quartoteresa_dimmerch2
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_wc_tete_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_wc_tete_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_wc_tete_ha_bsens
+  - platform: homeassistant
+    id: light_girafa_ha_bsens
+    entity_id: light.girafa_girafa_light
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_girafa_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_girafa_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_girafa_ha_bsens
+  - platform: homeassistant
+    id: light_girafa_ha2_bsens
+    entity_id: light.girafa_girafa_light2
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_girafa_ha2
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_girafa_ha2_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_girafa_ha2_bsens
+  - platform: homeassistant
+    id: switch_tomada_tete_ha_bsens
+    entity_id: switch.wallplug3
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: switch_tomada_tete_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: switch_tomada_tete_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰚥") : std::string("󰚦");
+    disabled_by_default: false
+    internal: true
+    name: switch_tomada_tete_ha_bsens
+  - platform: homeassistant
+    id: light_moon_ha_bsens
+    entity_id: light.benilamp_light
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_moon_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_moon_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_moon_ha_bsens
+  - platform: homeassistant
+    id: light_ikealamp1_ha_bsens
+    entity_id: light.ikealamp1
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_ikealamp1_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_ikealamp1_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_ikealamp1_ha_bsens
+  - platform: homeassistant
+    id: switch_tomada_ha_bsens
+    entity_id: switch.sonoffcableplug_sonoff_basic_relay
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: switch_tomada_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: switch_tomada_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰚥") : std::string("󰚦");
+    disabled_by_default: false
+    internal: true
+    name: switch_tomada_ha_bsens
+  - platform: homeassistant
+    id: light_jms_lamp_ha2_bsens
+    entity_id: light.jms_lamp_light
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_jms_lamp_ha2
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_jms_lamp_ha2_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_jms_lamp_ha2_bsens
+  - platform: homeassistant
+    id: switch_foot_heater_ha2_bsens
+    entity_id: switch.sonoffcableplug2_sonoff_basic_relay
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: switch_foot_heater_ha2
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: switch_foot_heater_ha2_icon
+              text: !lambda |-
+                return x ? std::string("󰐸") : std::string("󰐸");
+    disabled_by_default: false
+    internal: true
+    name: switch_foot_heater_ha2_bsens
+  - platform: homeassistant
+    id: light_garage_car_ha_bsens
+    entity_id: light.luz_garagem
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_garage_car_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_garage_car_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_garage_car_ha_bsens
+  - platform: homeassistant
+    id: light_garage_window_ha_bsens
+    entity_id: light.luz_garagem_tasmotaconsumos
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_garage_window_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_garage_window_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_garage_window_ha_bsens
+  - platform: homeassistant
+    id: light_garage_desk_ha_bsens
+    entity_id: light.printerplug_desklight
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_garage_desk_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_garage_desk_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_garage_desk_ha_bsens
+  - platform: homeassistant
+    id: light_garage_gym_ha_bsens
+    entity_id: light.lamp2
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_garage_gym_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_garage_gym_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_garage_gym_ha_bsens
+  - platform: homeassistant
+    id: switch_printer_ha_bsens
+    entity_id: switch.pizero2w_wallplug
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: switch_printer_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: switch_printer_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰚥") : std::string("󰚦");
+    disabled_by_default: false
+    internal: true
+    name: switch_printer_ha_bsens
+  - platform: homeassistant
+    id: light_garage_gate_ha_bsens
+    entity_id: light.sonnof_dual_r2
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_garage_gate_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_garage_gate_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_garage_gate_ha_bsens
+  - platform: homeassistant
+    id: light_garage_door_ha_bsens
+    entity_id: light.luz_porta_garagem
+    trigger_on_initial_state: true
+    on_state:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: light_garage_door_ha
+              state:
+                checked: !lambda |-
+                  return x;
+          - lvgl.label.update:
+              id:
+                - id: light_garage_door_ha_icon
+              text: !lambda |-
+                return x ? std::string("󰌵") : std::string("󰌶");
+    disabled_by_default: false
+    internal: true
+    name: light_garage_door_ha_bsens
+number:
+  - platform: template
+    name: Deep sleep timeout
+    optimistic: true
+    id: deep_sleep_timeout
+    unit_of_measurement: min
+    initial_value: 5.0
+    restore_value: true
+    min_value: 1.0
+    max_value: 60.0
+    step: 1.0
+    mode: BOX
+    disabled_by_default: false
+    update_interval: 60s
+  - platform: template
+    name: LVGL Screen timeout
+    optimistic: true
+    id: display_timeout
+    unit_of_measurement: s
+    initial_value: 60.0
+    restore_value: true
+    min_value: 10.0
+    max_value: 180.0
+    step: 5.0
+    mode: BOX
+    disabled_by_default: false
+    update_interval: 60s
+  - platform: template
+    name: Decibel Reduction
+    id: ducking_decibel
+    min_value: 0.0
+    max_value: 12.0
+    step: 1.0
+    initial_value: 0.0
+    unit_of_measurement: dB
+    set_action:
+      then:
+        - mixer_speaker.apply_ducking:
+            id: media_mixing_input
+            decibel_reduction: !lambda |-
+              return (int)x;
+            duration: 200ms
+    disabled_by_default: false
+    mode: AUTO
+    optimistic: false
+    update_interval: 60s
+deep_sleep:
+  id: deep_sleep_1
+  touch_wakeup: true
+  esp32_ext1_wakeup:
+    mode: ANY_LOW
+    pins:
+      - pin:
+          number: 0
+          mode:
+            input: true
+            output: false
+            open_drain: false
+            pullup: false
+            pulldown: false
+          inverted: false
+          ignore_pin_validation_error: false
+          ignore_strapping_warning: false
+          drive_strength: 20.0
+script:
+  - id: idle_deep_sleep
+    mode: restart
+    then:
+      - delay: !lambda |-
+          return (uint32_t) id(deep_sleep_timeout).state * 60000;
+      - script.execute:
+          id: power_off_sequence
+    parameters: {}
+  - id: wake_display
+    mode: single
+    then:
+      - if:
+          condition:
+            lvgl.is_paused:
+              lvgl_id: lvgl_lcd_id
+          then:
+            - lvgl.resume:
+                lvgl_id: lvgl_lcd_id
+            - lvgl.widget.redraw:
+                lvgl_id: lvgl_lcd_id
+      - light.turn_on:
+          id: back_light
+          state: true
+    parameters: {}
+  - id: power_off_sequence
+    mode: single
+    then:
+      - light.turn_off:
+          id: back_light
+          state: false
+      - light.turn_off:
+          id: led_strip
+          state: false
+      - switch.turn_off:
+          id: enable_3v3
+      - delay: 200ms
+      - lambda: !lambda |-
+          gpio_hold_en(GPIO_NUM_21);
+          gpio_deep_sleep_hold_en();
+      - deep_sleep.enter:
+          id: deep_sleep_1
+    parameters: {}
+  - id: reinit_displays
+    mode: single
+    then:
+      - logger.log:
+          format: Re-initializing displays after 3.3V rail cycle
+          args: []
+          level: DEBUG
+          tag: main
+      - lambda: !lambda |-
+          static const uint8_t init_seq[] = {
+            0x01, 0x00,              // SWRESET
+            150,  0xFF,              // delay 150ms
+            0x11, 0x00,              // SLPOUT
+            120,  0xFF,              // delay 120ms
+            0x3A, 0x01, 0x66,        // PIXFMT, 18 bit
+            0xE0, 0x0F, 0x00, 0x03, 0x09, 0x08, 0x16, 0x0A, 0x3F, 0x78,
+                        0x4C, 0x09, 0x0A, 0x08, 0x16, 0x1A, 0x0F,
+            0xE1, 0x0F, 0x00, 0x16, 0x19, 0x03, 0x0F, 0x05, 0x32, 0x45,
+                        0x46, 0x04, 0x0E, 0x0D, 0x35, 0x37, 0x0F,
+            0xC0, 0x02, 0x17, 0x15,  // PWCTR1
+            0xC1, 0x01, 0x41,        // PWCTR2
+            0xC5, 0x03, 0x00, 0x12, 0x80,  // VMCTR1
+            0xB0, 0x01, 0x00,        // IFMODE
+            0xB1, 0x01, 0xA0,        // FRMCTR1
+            0xB4, 0x01, 0x02,        // INVCTR
+            0xB6, 0x02, 0x02, 0x02,  // DFUNCTR
+            0xE9, 0x01, 0x00,
+            0xF7, 0x04, 0xA9, 0x51, 0x2C, 0x82,  // ADJCTL3
+            0x29, 0x00,              // DISPON
+          };
+          id(main_display).set_init_sequence(init_seq, sizeof(init_seq));
+          id(main_display).setup();
+          id(epaper_disp).setup();
+      - lvgl.widget.redraw:
+          lvgl_id: lvgl_lcd_id
+    parameters: {}
+  - id: reinit_epaper
+    mode: single
+    then:
+      - logger.log:
+          format: 'E-paper reconnected: re-initializing panel'
+          args: []
+          level: DEBUG
+          tag: main
+      - delay: 150ms
+      - lambda: !lambda |-
+          id(epaper_disp).setup();
+      - lvgl.resume:
+          lvgl_id: lvgl_epaper_id
+      - lvgl.widget.redraw:
+          lvgl_id: lvgl_epaper_id
+      - delay: 100ms
+      - component.update:
+          id: epaper_disp
+    parameters: {}
+  - id: listening_timeout
+    mode: restart
+    then:
+      - delay: 3s
+      - if:
+          condition:
+            lambda: !lambda |-
+              return id(voice_assistant_phase) == 2;
+          then:
+            - light.turn_off:
+                id: led_strip
+                state: false
+            - voice_assistant.stop: {}
+            - lambda: !lambda |-
+                id(voice_assistant_phase) = 1;
+    parameters: {}
+  - id: activate_stop_word_once
+    then:
+      - delay: 1s
+      - if:
+          condition:
+            switch.is_off:
+              id: timer_ringing
+          then:
+            - micro_wake_word.enable_model:
+                id: stop
+            - wait_until:
+                condition:
+                  not:
+                    media_player.is_announcing:
+                      id: external_media_player
+            - if:
+                condition:
+                  switch.is_off:
+                    id: timer_ringing
+                then:
+                  - micro_wake_word.disable_model:
+                      id: stop
+    mode: single
+    parameters: {}
+  - id: play_sound
+    parameters:
+      priority: bool
+      sound_file: audio::AudioFile*
+    then:
+      - lambda: !lambda |-
+          if (priority) {
+            id(external_media_player)
+              ->make_call()
+              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_STOP)
+              .set_announcement(true)
+              .perform();
+          }
+          if ( (id(external_media_player).state != media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING ) || priority) {
+            id(external_media_player)
+              ->play_file(sound_file, true, false);
+          }
+    mode: single
+output:
+  - platform: ledc
+    pin:
+      number: 46
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    id: LedLcd
+    zero_means_zero: false
+    frequency: 1000.0
+spi:
+  - id: spi_lcd
+    clk_pin:
+      number: 38
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    mosi_pin:
+      number: 41
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    miso_pin:
+      number: 47
+      mode:
+        input: true
+        output: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    interface: any
+    type: single
+    interface_index: 0
+  - id: spi_epaper
+    clk_pin:
+      number: 17
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    mosi_pin:
+      number: 10
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    interface: any
+    type: single
+    interface_index: 1
+touchscreen:
+  - platform: xpt2046
+    id: touch
+    spi_id: spi_lcd
+    display: main_display
+    cs_pin:
+      number: 18
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    update_interval: 50ms
+    threshold: 400
+    calibration:
+      x_min: 280
+      x_max: 3834
+      y_min: 229
+      y_max: 3853
+    transform:
+      mirror_y: true
+      mirror_x: false
+      swap_xy: false
+    on_release:
+      then:
+        - if:
+            condition:
+              lvgl.is_paused:
+                lvgl_id: lvgl_lcd_id
+            then:
+              - logger.log:
+                  format: LVGL resuming
+                  args: []
+                  level: DEBUG
+                  tag: main
+              - lvgl.resume:
+                  lvgl_id: lvgl_lcd_id
+              - lvgl.widget.redraw:
+                  lvgl_id: lvgl_lcd_id
+              - light.turn_on:
+                  id: back_light
+                  state: true
+        - script.execute:
+            id: idle_deep_sleep
+display:
+  - platform: mipi_spi
+    model: ILI9488_A
+    id: main_display
+    spi_id: spi_lcd
+    data_rate: 40000000.0
+    dc_pin:
+      number: 42
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    reset_pin:
+      number: 39
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    cs_pin:
+      number: 40
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    spi_mode: MODE0
+    color_order: BGR
+    update_interval: 4294967295ms
+    init_sequence:
+      - - 224
+        - 15
+        - 49
+        - 43
+        - 12
+        - 14
+        - 8
+        - 78
+        - 241
+        - 55
+        - 7
+        - 16
+        - 3
+        - 14
+        - 9
+        - 0
+      - - 4095
+        - 10
+      - - 225
+        - 0
+        - 14
+        - 20
+        - 3
+        - 17
+        - 7
+        - 49
+        - 193
+        - 72
+        - 8
+        - 15
+        - 12
+        - 49
+        - 54
+        - 15
+      - - 4095
+        - 10
+    bus_mode: single
+    auto_clear_enabled: unspecified
+    byte_order: big_endian
+    color_depth: '16'
+    draw_rounding: 1
+    pixel_mode: 18bit
+    invert_colors: false
+    use_axis_flips: false
+    spi_16: false
+  - platform: waveshare_epaper
+    id: epaper_disp
+    data_rate: 2000000.0
+    cs_pin:
+      number: 16
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    dc_pin:
+      number: 11
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    busy_pin:
+      number: 9
+      mode:
+        input: true
+        pulldown: true
+        output: false
+        open_drain: false
+        pullup: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    reset_pin:
+      number: 15
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    model: 2.90in
+    reset_duration: 200ms
+    full_update_every: 180
+    spi_id: spi_epaper
+    auto_clear_enabled: false
+    update_interval: 4294967295ms
+font:
+  - file:
+      path: /config/esphome/fonts/Roboto-Regular.ttf
+      type: local
+    id: icons_big
+    size: 60
+    bpp: 4
+    glyphsets:
+      - GF_Latin_Core
+    extras:
+      - file:
+          path: /config/esphome/fonts/materialdesignicons-webfont.ttf
+          type: local
+        glyphs:
+          - 󰋑
+          - 󰗔
+          - 󰖙
+          - 󰖔
+          - 󰖕
+          - 󰼱
+          - 󰖐
+          - 󰖑
+          - 󰖗
+          - 󰖘
+          - 󰙿
+          - 󰖖
+          - 󰙾
+          - 󰋜
+          - 󰁎
+          - 󰁕
+          - 󰌷
+          - 󰠜
+          - 󰠛
+          - 󰌵
+          - 󰌶
+          - 󰚥
+          - 󰚦
+          - 󰐸
+          - 󰛓
+          - 󰛔
+    glyphs: []
+    ignore_missing_glyphs: false
+  - file:
+      path: /config/esphome/fonts/Roboto-Regular.ttf
+      type: local
+    id: roboto_icons_42
+    size: 20
+    bpp: 4
+    glyphsets:
+      - GF_Latin_Core
+    extras:
+      - file:
+          path: /config/esphome/fonts/materialdesignicons-webfont.ttf
+          type: local
+        glyphs:
+          - 󰋑
+          - 󰗔
+          - 󰖙
+          - 󰖔
+          - 󰖕
+          - 󰼱
+          - 󰖐
+          - 󰖑
+          - 󰖗
+          - 󰖘
+          - 󰙿
+          - 󰖖
+          - 󰙾
+          - 󰋜
+          - 󰁎
+          - 󰁕
+          - 󰌷
+          - 󰠜
+          - 󰠛
+          - 󰁺
+          - 󰁻
+          - 󰁼
+          - 󰁽
+          - 󰁾
+          - 󰁿
+          - 󰂀
+          - 󰂁
+          - 󰂂
+          - 󰁹
+          - 󰂎
+          - 󰂑
+          - 󰖎
+          - 󰖝
+          - 󰔏
+          - 󰐥
+          - 󰜉
+          - 󰌵
+          - 󰌶
+          - 󰚥
+          - 󰚦
+          - 󰐸
+          - 󰛓
+          - 󰛔
+          - 󰋣
+          - 󰔂
+          - 󰄐
+          - 󰍬
+          - 󰈙
+    glyphs: []
+    ignore_missing_glyphs: false
+  - file:
+      path: /config/esphome/fonts/Roboto-Regular.ttf
+      type: local
+    id: epaper_font_title
+    size: 22
+    bpp: 1
+    glyphsets:
+      - GF_Latin_Core
+    glyphs: []
+    ignore_missing_glyphs: false
+    extras: []
+  - file:
+      path: /config/esphome/fonts/Roboto-Regular.ttf
+      type: local
+    id: epaper_font_med
+    size: 16
+    bpp: 1
+    glyphsets:
+      - GF_Latin_Core
+    glyphs: []
+    ignore_missing_glyphs: false
+    extras: []
+  - file:
+      path: /config/esphome/fonts/Roboto-Regular.ttf
+      type: local
+    id: epaper_font_small
+    size: 13
+    bpp: 1
+    glyphsets:
+      - GF_Latin_Core
+    glyphs: []
+    ignore_missing_glyphs: false
+    extras: []
+text_sensor:
+  - platform: homeassistant
+    id: sns_grocery_active
+    entity_id: sensor.hmi_grocery_list
+    attribute: active
+    on_value:
+      - then:
+          - lambda: !lambda |-
+              id(groc_active).clear();
+              std::string s = x;
+              size_t start = 0;
+              while (start <= s.size()) {
+                size_t nl = s.find('\n', start);
+                std::string item = (nl == std::string::npos) ? s.substr(start) : s.substr(start, nl - start);
+                if (!item.empty() && item.back() == '\r') item.pop_back();
+                if (!item.empty()) id(groc_active).push_back(item);
+                if (nl == std::string::npos) break;
+                start = nl + 1;
+              }
+              lv_obj_t *rows[10]   = {id(groc_row_0), id(groc_row_1), id(groc_row_2), id(groc_row_3), id(groc_row_4), id(groc_row_5), id(groc_row_6), id(groc_row_7), id(groc_row_8), id(groc_row_9)};
+              lv_obj_t *labels[10] = {id(lbl_groc_0), id(lbl_groc_1), id(lbl_groc_2), id(lbl_groc_3), id(lbl_groc_4), id(lbl_groc_5), id(lbl_groc_6), id(lbl_groc_7), id(lbl_groc_8), id(lbl_groc_9)};
+              for (int i = 0; i < 10; i++) {
+                if ((size_t) i < id(groc_active).size()) {
+                  lv_label_set_text(labels[i], id(groc_active)[i].c_str());
+                  lv_obj_clear_flag(rows[i], LV_OBJ_FLAG_HIDDEN);
+                } else {
+                  lv_obj_add_flag(rows[i], LV_OBJ_FLAG_HIDDEN);
+                }
+              }
+              // Mirror the active list onto the e-paper shopping view.
+              std::string ep;
+              for (size_t i = 0; i < id(groc_active).size(); i++) {
+                if (i) ep += "\n";
+                ep += "- " + id(groc_active)[i];
+              }
+              lv_label_set_text(id(lbl_ep_shopping), ep.empty() ? "(lista vazia)" : ep.c_str());
+    disabled_by_default: false
+    internal: true
+    name: sns_grocery_active
+  - platform: homeassistant
+    id: sns_grocery_catalog
+    entity_id: sensor.hmi_grocery_list
+    attribute: catalog
+    on_value:
+      - then:
+          - lambda: !lambda |-
+              id(groc_catalog).clear();
+              std::string s = x;
+              size_t start = 0;
+              while (start <= s.size()) {
+                size_t nl = s.find('\n', start);
+                std::string item = (nl == std::string::npos) ? s.substr(start) : s.substr(start, nl - start);
+                if (!item.empty() && item.back() == '\r') item.pop_back();
+                if (!item.empty()) id(groc_catalog).push_back(item);
+                if (nl == std::string::npos) break;
+                start = nl + 1;
+              }
+              lv_obj_t *rows[14]   = {id(groc_cat_0), id(groc_cat_1), id(groc_cat_2), id(groc_cat_3), id(groc_cat_4), id(groc_cat_5), id(groc_cat_6), id(groc_cat_7), id(groc_cat_8), id(groc_cat_9), id(groc_cat_10), id(groc_cat_11), id(groc_cat_12), id(groc_cat_13)};
+              lv_obj_t *labels[14] = {id(lbl_groc_cat_0), id(lbl_groc_cat_1), id(lbl_groc_cat_2), id(lbl_groc_cat_3), id(lbl_groc_cat_4), id(lbl_groc_cat_5), id(lbl_groc_cat_6), id(lbl_groc_cat_7), id(lbl_groc_cat_8), id(lbl_groc_cat_9), id(lbl_groc_cat_10), id(lbl_groc_cat_11), id(lbl_groc_cat_12), id(lbl_groc_cat_13)};
+              for (int i = 0; i < 14; i++) {
+                if ((size_t) i < id(groc_catalog).size()) {
+                  lv_label_set_text(labels[i], id(groc_catalog)[i].c_str());
+                  lv_obj_clear_flag(rows[i], LV_OBJ_FLAG_HIDDEN);
+                } else {
+                  lv_obj_add_flag(rows[i], LV_OBJ_FLAG_HIDDEN);
+                }
+              }
+    disabled_by_default: false
+    internal: true
+    name: sns_grocery_catalog
+  - platform: homeassistant
+    id: sns_meal_today
+    entity_id: sensor.hmi_meal_today
+    on_value:
+      - then:
+          - lambda: !lambda |-
+              id(meal_today) = x;
+              lv_label_set_text(id(lbl_ep_meal_today), x.empty() ? "--" : x.c_str());
+    disabled_by_default: false
+    internal: true
+    name: sns_meal_today
+  - platform: homeassistant
+    id: sns_meal_tomorrow
+    entity_id: sensor.hmi_meal_tomorrow
+    on_value:
+      - then:
+          - lambda: !lambda |-
+              id(meal_tomorrow) = x;
+              lv_label_set_text(id(lbl_ep_meal_tomorrow), x.empty() ? "--" : x.c_str());
+    disabled_by_default: false
+    internal: true
+    name: sns_meal_tomorrow
+  - platform: homeassistant
+    id: sensor_door_balcony_tsens
+    entity_id: binary_sensor.porta_varanda_contact
+    on_value:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: sensor_door_balcony
+              state:
+                checked: !lambda |-
+                  return (0 == x.compare(std::string{"on"}));
+                disabled: !lambda |-
+                  return ((0 == x.compare(std::string{"unavailable"})) or (0 == x.compare(std::string{"unknown"})));
+          - lvgl.label.update:
+              id:
+                - id: sensor_door_balcony_icon
+              text: !lambda |-
+                if (0 == x.compare(std::string{"on"})) {
+                  return std::string("󰠜");
+                }
+                return std::string("󰠛");
+    disabled_by_default: false
+    internal: true
+    name: sensor_door_balcony_tsens
+  - platform: homeassistant
+    id: sensor_garage_door_tsens
+    entity_id: binary_sensor.0x00124b002344c38d_contact
+    on_value:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: sensor_garage_door
+              state:
+                checked: !lambda |-
+                  return (0 == x.compare(std::string{"on"}));
+                disabled: !lambda |-
+                  return ((0 == x.compare(std::string{"unavailable"})) or (0 == x.compare(std::string{"unknown"})));
+          - lvgl.label.update:
+              id:
+                - id: sensor_garage_door_icon
+              text: !lambda |-
+                if (0 == x.compare(std::string{"on"})) {
+                  return std::string("󰠜");
+                }
+                return std::string("󰠛");
+    disabled_by_default: false
+    internal: true
+    name: sensor_garage_door_tsens
+  - platform: homeassistant
+    id: sensor_garage_gate_tsens
+    entity_id: binary_sensor.portao_garagem_contact
+    on_value:
+      - then:
+          - lvgl.widget.update:
+              id:
+                - id: sensor_garage_gate
+              state:
+                checked: !lambda |-
+                  return (0 == x.compare(std::string{"on"}));
+                disabled: !lambda |-
+                  return ((0 == x.compare(std::string{"unavailable"})) or (0 == x.compare(std::string{"unknown"})));
+          - lvgl.label.update:
+              id:
+                - id: sensor_garage_gate_icon
+              text: !lambda |-
+                if (0 == x.compare(std::string{"on"})) {
+                  return std::string("󰛔");
+                }
+                return std::string("󰛓");
+    disabled_by_default: false
+    internal: true
+    name: sensor_garage_gate_tsens
+  - platform: homeassistant
+    id: sns_weather_condition
+    entity_id: weather.forecast_home
+    on_value:
+      - then:
+          - lvgl.label.update:
+              id:
+                - id: lbl_weather_cond
+              text: !lambda |-
+                return x.c_str();
+          - lambda: !lambda |-
+              id(weather_cond_now) = x;
+          - lvgl.label.update:
+              id:
+                - id: lbl_weather_icon
+              text: !lambda |-
+                // Map Home Assistant weather condition to an MDI glyph
+                if (x == "sunny") return "\U000F0599";        // weather-sunny
+                if (x == "clear-night") return "\U000F0594";  // weather-night
+                if (x == "partlycloudy") return "\U000F0595"; // weather-partly-cloudy
+                if (x == "cloudy") return "\U000F0590";       // weather-cloudy
+                if (x == "fog") return "\U000F0591";          // weather-fog
+                if (x == "rainy") return "\U000F0597";        // weather-rainy
+                if (x == "pouring") return "\U000F0596";      // weather-pouring
+                if (x == "snowy") return "\U000F0598";        // weather-snowy
+                if (x == "snowy-rainy") return "\U000F067F";  // weather-snowy-rainy
+                if (x == "hail") return "\U000F0598";         // weather-snowy (approx)
+                if (x == "lightning" || x == "lightning-rainy") return "\U000F067E"; // lightning-rainy
+                if (x == "windy" || x == "windy-variant") return "\U000F0590";       // cloudy (approx)
+                if (x == "exceptional") return "\U000F067E";  // lightning-rainy (approx)
+                return "\U000F0590";                          // default: weather-cloudy
+    disabled_by_default: false
+    internal: true
+    name: sns_weather_condition
+  - platform: homeassistant
+    id: sns_weather_forecast
+    entity_id: sensor.hmi_weather_forecast
+    attribute: forecast_compact
+    on_value:
+      - then:
+          - lambda: !lambda |-
+              id(weather_fc) = x;
+              const std::string s = x;
+              auto icon_for = [](const std::string &c) -> const char * {
+                if (c == "sunny") return "\U000F0599";
+                if (c == "clear-night") return "\U000F0594";
+                if (c == "partlycloudy") return "\U000F0595";
+                if (c == "cloudy") return "\U000F0590";
+                if (c == "fog") return "\U000F0591";
+                if (c == "rainy") return "\U000F0597";
+                if (c == "pouring") return "\U000F0596";
+                if (c == "snowy") return "\U000F0598";
+                if (c == "snowy-rainy") return "\U000F067F";
+                if (c == "hail") return "\U000F0598";
+                if (c == "lightning" || c == "lightning-rainy") return "\U000F067E";
+                if (c == "windy" || c == "windy-variant") return "\U000F0590";
+                if (c == "exceptional") return "\U000F067E";
+                return "\U000F0590";
+              };
+              lv_obj_t *day_l[4]  = {id(lbl_fc0_day),  id(lbl_fc1_day),  id(lbl_fc2_day),  id(lbl_fc3_day)};
+              lv_obj_t *icon_l[4] = {id(lbl_fc0_icon), id(lbl_fc1_icon), id(lbl_fc2_icon), id(lbl_fc3_icon)};
+              lv_obj_t *high_l[4] = {id(lbl_fc0_high), id(lbl_fc1_high), id(lbl_fc2_high), id(lbl_fc3_high)};
+              lv_obj_t *low_l[4]  = {id(lbl_fc0_low),  id(lbl_fc1_low),  id(lbl_fc2_low),  id(lbl_fc3_low)};
+              size_t start = 0;
+              for (int i = 0; i < 4; i++) {
+                size_t sep = s.find(';', start);
+                std::string item = (sep == std::string::npos) ? s.substr(start) : s.substr(start, sep - start);
+                std::string f[4];
+                size_t p = 0; int fi = 0;
+                while (fi < 4) {
+                  size_t q = item.find('|', p);
+                  if (q == std::string::npos) { f[fi++] = item.substr(p); break; }
+                  f[fi++] = item.substr(p, q - p); p = q + 1;
+                }
+                if (!f[0].empty()) {
+                  lv_label_set_text(day_l[i], f[0].c_str());
+                  lv_label_set_text(icon_l[i], icon_for(f[1]));
+                  lv_label_set_text(high_l[i], (f[2] + "\u00B0").c_str());
+                  lv_label_set_text(low_l[i], (f[3] + "\u00B0").c_str());
+                  if (i == 0) {
+                    std::string mm = f[3] + "\u00B0 / " + f[2] + "\u00B0";
+                    lv_label_set_text(id(lbl_weather_minmax), mm.c_str());
+                    lv_label_set_text(id(lbl_ep_today_max), (f[2] + "\u00B0").c_str());
+                    lv_label_set_text(id(lbl_ep_today_min), (f[3] + "\u00B0").c_str());
+                  } else if (i == 1) {
+                    lv_label_set_text(id(lbl_ep_tomorrow_max), (f[2] + "\u00B0").c_str());
+                    lv_label_set_text(id(lbl_ep_tomorrow_min), (f[3] + "\u00B0").c_str());
+                  }
+                }
+                if (sep == std::string::npos) break;
+                start = sep + 1;
+              }
+    disabled_by_default: false
+    internal: true
+    name: sns_weather_forecast
+lvgl:
+  - id: lvgl_lcd_id
+    displays:
+      - main_display
+    rotation: 270
+    log_level: ERROR
+    touchscreens:
+      - touchscreen_id: touch
+        long_press_repeat_time: 100ms
+        long_press_time: 400ms
+    buffer_size: 0.2
+    on_idle:
+      - timeout: !lambda |-
+          return (id(display_timeout).state * 1000);
+        then:
+          - logger.log:
+              format: LVGL is idle
+              args: []
+              level: DEBUG
+              tag: main
+          - light.turn_off:
+              id: back_light
+              state: false
+          - lvgl.pause:
+              lvgl_id: lvgl_lcd_id
+              show_snow: false
+    pages:
+      - id: page_home
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Início
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 6
+              bg_opa: 0.0
+              border_opa: 0.0
+              layout:
+                type: grid
+                grid_rows:
+                  - LV_GRID_FR(1)
+                  - LV_GRID_FR(1)
+                  - LV_GRID_FR(1)
+                  - LV_GRID_FR(1)
+                grid_columns:
+                  - LV_GRID_FR(1)
+                  - LV_GRID_FR(1)
+                  - LV_GRID_FR(1)
+                pad_row: 8
+                pad_column: 8
+                multiple_widgets_per_cell: false
+              widgets:
+                - button:
+                    id: home_living_room_btn
+                    grid_cell_row_pos: 0
+                    grid_cell_column_pos: 0
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰋜
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Sala
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_living_room
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: home_quarto_tete_btn
+                    grid_cell_row_pos: 0
+                    grid_cell_column_pos: 1
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰋣
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Teté
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_quarto_tete
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: home_quarto_tj_btn
+                    grid_cell_row_pos: 0
+                    grid_cell_column_pos: 2
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰋣
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Tixa João
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_tixa_joao
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: home_hall_btn
+                    grid_cell_row_pos: 1
+                    grid_cell_column_pos: 0
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰠛
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Hall
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_hall
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: home_garage_btn
+                    grid_cell_row_pos: 1
+                    grid_cell_column_pos: 1
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰛓
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Garagem
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_garage
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: home_outside_btn
+                    grid_cell_row_pos: 1
+                    grid_cell_column_pos: 2
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰠜
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Exterior
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_outside
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: home_tv_btn
+                    grid_cell_row_pos: 2
+                    grid_cell_column_pos: 0
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰔂
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: TV
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_tv
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: home_weather_btn
+                    grid_cell_row_pos: 2
+                    grid_cell_column_pos: 1
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰖙
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Tempo
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_weather
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: grocery_nav_btn
+                    grid_cell_row_pos: 2
+                    grid_cell_column_pos: 2
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰄐
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Compras
+                    on_click:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_grocery
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                - button:
+                    id: light_lcd_btn
+                    checkable: true
+                    grid_cell_row_pos: 3
+                    grid_cell_column_pos: 0
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰌵
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Luz
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.hacontrol_display_backlight
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: voice_toggle_btn
+                    checkable: true
+                    grid_cell_row_pos: 3
+                    grid_cell_column_pos: 1
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰍬
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Voz
+                    on_click:
+                      - then:
+                          - switch.toggle:
+                              id: voice_enabled
+                - button:
+                    id: home_epaper_btn
+                    grid_cell_row_pos: 3
+                    grid_cell_column_pos: 2
+                    grid_cell_x_align: LV_GRID_ALIGN_STRETCH
+                    grid_cell_y_align: LV_GRID_ALIGN_STRETCH
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_TOP_LEFT
+                          text: 󰈙
+                      - label:
+                          align: LV_ALIGN_BOTTOM_LEFT
+                          text: Papel
+                    on_click:
+                      - then:
+                          - lvgl.widget.show:
+                              - id: epaper_menu
+        skip: false
+      - id: page_weather
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Tempo
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 4
+              bg_opa: 0.0
+              border_opa: 0.0
+              widgets:
+                - label:
+                    id: lbl_weather_icon
+                    text_font: icons_big
+                    text: 󰖐
+                    align: LV_ALIGN_TOP_LEFT
+                    x: 14
+                    y: 0
+                - label:
+                    id: lbl_weather_cond
+                    text: —
+                    align: LV_ALIGN_TOP_LEFT
+                    x: 6
+                    y: 66
+                - label:
+                    id: lbl_weather_temp
+                    text_font: icons_big
+                    text: --°
+                    align: LV_ALIGN_TOP_RIGHT
+                    x: -14
+                    y: 4
+                - label:
+                    id: lbl_weather_minmax
+                    text: --° / --°
+                    align: LV_ALIGN_TOP_RIGHT
+                    x: -14
+                    y: 66
+                - obj:
+                    align: LV_ALIGN_TOP_MID
+                    y: 92
+                    width: 448
+                    height: 26
+                    pad_all: 0
+                    bg_opa: 0.0
+                    border_opa: 0.0
+                    layout:
+                      type: flex
+                      flex_flow: LV_FLEX_FLOW_ROW
+                      flex_align_main: LV_FLEX_ALIGN_SPACE_EVENLY
+                      flex_align_cross: LV_FLEX_ALIGN_CENTER
+                      flex_align_track: LV_FLEX_ALIGN_START
+                    widgets:
+                      - label:
+                          id: lbl_weather_outside
+                          text: 󰔏 --°
+                      - label:
+                          id: lbl_weather_humidity
+                          text: 󰖎 --%
+                      - label:
+                          id: lbl_weather_wind
+                          text: 󰖝 -- km/h
+                - obj:
+                    align: LV_ALIGN_BOTTOM_MID
+                    y: 0
+                    width: 456
+                    height: 122
+                    pad_all: 0
+                    bg_opa: 0.0
+                    border_opa: 0.0
+                    layout:
+                      type: flex
+                      flex_flow: LV_FLEX_FLOW_ROW
+                      flex_align_main: LV_FLEX_ALIGN_SPACE_EVENLY
+                      flex_align_cross: LV_FLEX_ALIGN_CENTER
+                      flex_align_track: LV_FLEX_ALIGN_START
+                    widgets:
+                      - obj:
+                          width: 108
+                          height: 118
+                          pad_all: 2
+                          bg_opa: 0.0
+                          border_opa: 0.0
+                          layout:
+                            type: flex
+                            flex_flow: LV_FLEX_FLOW_COLUMN
+                            flex_align_main: LV_FLEX_ALIGN_CENTER
+                            flex_align_cross: LV_FLEX_ALIGN_CENTER
+                            pad_row: 2
+                            flex_align_track: LV_FLEX_ALIGN_START
+                          widgets:
+                            - label:
+                                id: lbl_fc0_day
+                                text: —
+                            - label:
+                                id: lbl_fc0_icon
+                                text: 󰖐
+                            - label:
+                                id: lbl_fc0_high
+                                text: --°
+                            - label:
+                                id: lbl_fc0_low
+                                text: --°
+                                text_color: 8947848
+                      - obj:
+                          width: 108
+                          height: 118
+                          pad_all: 2
+                          bg_opa: 0.0
+                          border_opa: 0.0
+                          layout:
+                            type: flex
+                            flex_flow: LV_FLEX_FLOW_COLUMN
+                            flex_align_main: LV_FLEX_ALIGN_CENTER
+                            flex_align_cross: LV_FLEX_ALIGN_CENTER
+                            pad_row: 2
+                            flex_align_track: LV_FLEX_ALIGN_START
+                          widgets:
+                            - label:
+                                id: lbl_fc1_day
+                                text: —
+                            - label:
+                                id: lbl_fc1_icon
+                                text: 󰖐
+                            - label:
+                                id: lbl_fc1_high
+                                text: --°
+                            - label:
+                                id: lbl_fc1_low
+                                text: --°
+                                text_color: 8947848
+                      - obj:
+                          width: 108
+                          height: 118
+                          pad_all: 2
+                          bg_opa: 0.0
+                          border_opa: 0.0
+                          layout:
+                            type: flex
+                            flex_flow: LV_FLEX_FLOW_COLUMN
+                            flex_align_main: LV_FLEX_ALIGN_CENTER
+                            flex_align_cross: LV_FLEX_ALIGN_CENTER
+                            pad_row: 2
+                            flex_align_track: LV_FLEX_ALIGN_START
+                          widgets:
+                            - label:
+                                id: lbl_fc2_day
+                                text: —
+                            - label:
+                                id: lbl_fc2_icon
+                                text: 󰖐
+                            - label:
+                                id: lbl_fc2_high
+                                text: --°
+                            - label:
+                                id: lbl_fc2_low
+                                text: --°
+                                text_color: 8947848
+                      - obj:
+                          width: 108
+                          height: 118
+                          pad_all: 2
+                          bg_opa: 0.0
+                          border_opa: 0.0
+                          layout:
+                            type: flex
+                            flex_flow: LV_FLEX_FLOW_COLUMN
+                            flex_align_main: LV_FLEX_ALIGN_CENTER
+                            flex_align_cross: LV_FLEX_ALIGN_CENTER
+                            pad_row: 2
+                            flex_align_track: LV_FLEX_ALIGN_START
+                          widgets:
+                            - label:
+                                id: lbl_fc3_day
+                                text: —
+                            - label:
+                                id: lbl_fc3_icon
+                                text: 󰖐
+                            - label:
+                                id: lbl_fc3_high
+                                text: --°
+                            - label:
+                                id: lbl_fc3_low
+                                text: --°
+                                text_color: 8947848
+        skip: false
+      - id: page_living_room
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Sala
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN_WRAP
+                flex_align_cross: LV_FLEX_ALIGN_CENTER
+                pad_row: 6
+                pad_column: 8
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: switch_foot_heater_ha2
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: switch_foot_heater_ha2_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰐸
+                      - label:
+                          id: switch_foot_heater_ha2_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Escalfeta
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: switch.toggle
+                              data:
+                                entity_id: switch.sonoffcableplug2_sonoff_basic_relay
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_jms_lamp_ha2
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_jms_lamp_ha2_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_jms_lamp_ha2_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz Monitor
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.jms_lamp_light
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+        skip: false
+      - id: page_quarto_tete
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Quarto Teté
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN_WRAP
+                flex_align_cross: LV_FLEX_ALIGN_CENTER
+                pad_row: 6
+                pad_column: 8
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: light_quarto_tete_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_quarto_tete_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_quarto_tete_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz Quarto
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.ms105b_quartoteresa_dimmerch1
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_wc_tete_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_wc_tete_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_wc_tete_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz WC
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.ms105b_quartoteresa_dimmerch2
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_girafa_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_girafa_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_girafa_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Girafa
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.girafa_girafa_light
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_girafa_ha2
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_girafa_ha2_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_girafa_ha2_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Girafa2
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.girafa_girafa_light2
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: switch_tomada_tete_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: switch_tomada_tete_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰚦
+                      - label:
+                          id: switch_tomada_tete_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Tomada
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: switch.toggle
+                              data:
+                                entity_id: switch.wallplug3
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+        skip: false
+      - id: page_tixa_joao
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Quarto Tixa João
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN_WRAP
+                flex_align_cross: LV_FLEX_ALIGN_CENTER
+                pad_row: 6
+                pad_column: 8
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: light_moon_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_moon_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_moon_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Lua
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.benilamp_light
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_ikealamp1_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_ikealamp1_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_ikealamp1_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Candeeiro
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.ikealamp1
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: switch_tomada_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: switch_tomada_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰚦
+                      - label:
+                          id: switch_tomada_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Tomada
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: switch.toggle
+                              data:
+                                entity_id: switch.sonoffcableplug_sonoff_basic_relay
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+        skip: false
+      - id: page_hall
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Hall
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN_WRAP
+                flex_align_cross: LV_FLEX_ALIGN_CENTER
+                pad_row: 6
+                pad_column: 8
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: sensor_door_balcony
+                    width: 108
+                    height: 94
+                    checkable: true
+                    clickable: false
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: sensor_door_balcony_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰠛
+                      - label:
+                          id: sensor_door_balcony_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Varanda
+        skip: false
+      - id: page_garage
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Garagem
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN_WRAP
+                flex_align_cross: LV_FLEX_ALIGN_CENTER
+                pad_row: 6
+                pad_column: 8
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: light_garage_car_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_garage_car_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_garage_car_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz Carro
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.luz_garagem
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_garage_window_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_garage_window_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_garage_window_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz Janela
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.luz_garagem_tasmotaconsumos
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_garage_desk_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_garage_desk_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_garage_desk_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz Secretária
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.printerplug_desklight
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_garage_gym_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_garage_gym_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_garage_gym_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz Gym
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.lamp2
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: switch_printer_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: switch_printer_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰚦
+                      - label:
+                          id: switch_printer_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Printer
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: switch.toggle
+                              data:
+                                entity_id: switch.pizero2w_wallplug
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: sensor_garage_door
+                    width: 108
+                    height: 94
+                    checkable: true
+                    clickable: false
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: sensor_garage_door_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰠛
+                      - label:
+                          id: sensor_garage_door_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Porta
+                - button:
+                    id: sensor_garage_gate
+                    width: 108
+                    height: 94
+                    checkable: true
+                    clickable: false
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: sensor_garage_gate_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰛓
+                      - label:
+                          id: sensor_garage_gate_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Portão
+        skip: false
+      - id: page_outside
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Exterior
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN_WRAP
+                flex_align_cross: LV_FLEX_ALIGN_CENTER
+                pad_row: 6
+                pad_column: 8
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: light_garage_gate_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_garage_gate_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_garage_gate_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz Portão
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.sonnof_dual_r2
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+                - button:
+                    id: light_garage_door_ha
+                    width: 108
+                    height: 94
+                    checkable: true
+                    radius: 12
+                    pad_all: 4
+                    widgets:
+                      - label:
+                          id: light_garage_door_ha_icon
+                          align: LV_ALIGN_TOP_MID
+                          y: 4
+                          text_font: icons_big
+                          text: 󰌶
+                      - label:
+                          id: light_garage_door_ha_name
+                          align: LV_ALIGN_BOTTOM_MID
+                          y: -2
+                          width: 100
+                          long_mode: LV_LABEL_LONG_DOT
+                          text_align: LV_TEXT_ALIGN_CENTER
+                          text: Luz Porta
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: light.toggle
+                              data:
+                                entity_id: light.luz_porta_garagem
+                              data_template: {}
+                              variables: {}
+                              capture_response: false
+        skip: false
+      - id: page_tv
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: TV
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - obj:
+              align: LV_ALIGN_CENTER
+              width: 460
+              height: 256
+              x: 4
+              y: 4
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN_WRAP
+                flex_align_cross: LV_FLEX_ALIGN_CENTER
+                pad_row: 6
+                pad_column: 8
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: tv_btn_power
+                    width: 100
+                    height: 70
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_CENTER
+                          text: Energia
+                    on_click:
+                      - then:
+                          - button.press:
+                              id: ir_tv_power
+                - button:
+                    id: tv_btn_vol_up
+                    width: 100
+                    height: 70
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_CENTER
+                          text: Vol +
+                    on_click:
+                      - then:
+                          - button.press:
+                              id: ir_tv_volume_up
+                - button:
+                    id: tv_btn_vol_down
+                    width: 100
+                    height: 70
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_CENTER
+                          text: Vol -
+                    on_click:
+                      - then:
+                          - button.press:
+                              id: ir_tv_volume_down
+                - button:
+                    id: tv_btn_mute
+                    width: 100
+                    height: 70
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_CENTER
+                          text: Mudo
+                    on_click:
+                      - then:
+                          - button.press:
+                              id: ir_tv_mute
+                - button:
+                    id: tv_btn_ch_up
+                    width: 100
+                    height: 70
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_CENTER
+                          text: CH +
+                    on_click:
+                      - then:
+                          - button.press:
+                              id: ir_tv_channel_up
+                - button:
+                    id: tv_btn_ch_down
+                    width: 100
+                    height: 70
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_CENTER
+                          text: CH -
+                    on_click:
+                      - then:
+                          - button.press:
+                              id: ir_tv_channel_down
+                - button:
+                    id: tv_btn_source
+                    width: 100
+                    height: 70
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_CENTER
+                          text: Fonte
+                    on_click:
+                      - then:
+                          - button.press:
+                              id: ir_tv_source
+        skip: false
+      - id: page_grocery
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Compras
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - button:
+              id: grocery_add_btn
+              align: LV_ALIGN_TOP_MID
+              y: 32
+              width: 1.0
+              height: 36
+              widgets:
+                - label:
+                    align: LV_ALIGN_CENTER
+                    text: + Adicionar
+              on_click:
+                - then:
+                    - lvgl.page.show:
+                        lvgl_id: lvgl_lcd_id
+                        id: page_grocery_add
+                        animation: LV_SCREEN_LOAD_ANIM_NONE
+                        time: 50ms
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              y: 72
+              width: 1.0
+              height: 206
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              scrollbar_mode: LV_SCROLLBAR_MODE_AUTO
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN
+                pad_row: 3
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_cross: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: groc_row_0
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_0
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 0 < v.size()) return v[0];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_1
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_1
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 1 < v.size()) return v[1];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_2
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_2
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 2 < v.size()) return v[2];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_3
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_3
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 3 < v.size()) return v[3];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_4
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_4
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 4 < v.size()) return v[4];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_5
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_5
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 5 < v.size()) return v[5];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_6
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_6
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 6 < v.size()) return v[6];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_7
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_7
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 7 < v.size()) return v[7];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_8
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_8
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 8 < v.size()) return v[8];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_row_9
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_9
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.update_item
+                              data:
+                                entity_id: todo.shopping_list
+                                status: completed
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_active);
+                                  if ((size_t) 9 < v.size()) return v[9];
+                                  return std::string("");
+                              capture_response: false
+        skip: false
+      - id: page_grocery_add
+        skip: true
+        widgets:
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              styles:
+                - header_footer
+              widgets:
+                - label:
+                    text: Adicionar
+                    align: LV_ALIGN_CENTER
+                    text_align: LV_TEXT_ALIGN_CENTER
+          - button:
+              id: grocery_back_btn
+              align: LV_ALIGN_TOP_MID
+              y: 32
+              width: 1.0
+              height: 36
+              widgets:
+                - label:
+                    align: LV_ALIGN_CENTER
+                    text: 󰁎 Voltar
+              on_click:
+                - then:
+                    - lvgl.page.show:
+                        lvgl_id: lvgl_lcd_id
+                        id: page_grocery
+                        animation: LV_SCREEN_LOAD_ANIM_NONE
+                        time: 50ms
+          - obj:
+              align: LV_ALIGN_TOP_MID
+              y: 72
+              width: 1.0
+              height: 206
+              pad_all: 3
+              bg_opa: 0.0
+              border_opa: 0.0
+              scrollbar_mode: LV_SCROLLBAR_MODE_AUTO
+              layout:
+                type: flex
+                flex_flow: LV_FLEX_FLOW_COLUMN
+                pad_row: 3
+                flex_align_main: LV_FLEX_ALIGN_START
+                flex_align_cross: LV_FLEX_ALIGN_START
+                flex_align_track: LV_FLEX_ALIGN_START
+              widgets:
+                - button:
+                    id: groc_cat_0
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_0
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 0 < v.size()) return v[0];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_1
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_1
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 1 < v.size()) return v[1];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_2
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_2
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 2 < v.size()) return v[2];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_3
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_3
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 3 < v.size()) return v[3];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_4
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_4
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 4 < v.size()) return v[4];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_5
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_5
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 5 < v.size()) return v[5];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_6
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_6
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 6 < v.size()) return v[6];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_7
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_7
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 7 < v.size()) return v[7];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_8
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_8
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 8 < v.size()) return v[8];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_9
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_9
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 9 < v.size()) return v[9];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_10
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_10
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 10 < v.size()) return v[10];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_11
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_11
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 11 < v.size()) return v[11];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_12
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_12
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 12 < v.size()) return v[12];
+                                  return std::string("");
+                              capture_response: false
+                - button:
+                    id: groc_cat_13
+                    width: 1.0
+                    height: 40
+                    hidden: true
+                    pad_left: 10
+                    pad_right: 10
+                    widgets:
+                      - label:
+                          align: LV_ALIGN_LEFT_MID
+                          id: lbl_groc_cat_13
+                          text: ''
+                          long_mode: LV_LABEL_LONG_DOT
+                          width: 430
+                    on_click:
+                      - then:
+                          - homeassistant.action:
+                              action: todo.add_item
+                              data:
+                                entity_id: todo.shopping_list
+                              data_template:
+                                item: '{{ item_name }}'
+                              variables:
+                                item_name: !lambda |-
+                                  auto &v = id(groc_catalog);
+                                  if ((size_t) 13 < v.size()) return v[13];
+                                  return std::string("");
+                              capture_response: false
+    theme:
+      label:
+        text_font: roboto_icons_42
+      button:
+        bg_color: 3116248
+        bg_grad_color: 22402
+        bg_grad_dir: LV_GRAD_DIR_VER
+        bg_opa: 1.0
+        border_color: 30643
+        border_width: 1
+        text_color: 16777215
+        text_font: roboto_icons_42
+        pressed:
+          bg_color: 14336627
+          bg_grad_color: 14532185
+          text_color: 0
+        checked:
+          bg_color: 5350012
+          bg_grad_color: 5350034
+          text_color: 16773888
+      buttonmatrix:
+        bg_opa: 0.0
+        border_color: 30643
+        border_width: 0
+        text_color: 16777215
+        pad_all: 0
+        items:
+          bg_color: 3116248
+          bg_grad_color: 22402
+          bg_grad_dir: LV_GRAD_DIR_VER
+          bg_opa: 1.0
+          border_color: 30643
+          border_width: 1
+          text_color: 16777215
+          text_font: roboto_icons_42
+          pressed:
+            bg_color: 14336627
+            bg_grad_color: 14532185
+            text_color: 0
+          checked:
+            bg_color: 5350012
+            bg_grad_color: 5350034
+            text_color: 16773888
+      switch:
+        bg_color: 12632256
+        bg_grad_color: 11579568
+        bg_grad_dir: LV_GRAD_DIR_VER
+        bg_opa: 1.0
+        checked:
+          bg_color: 1925014
+          bg_grad_color: 209482
+          bg_grad_dir: LV_GRAD_DIR_VER
+          bg_opa: 1.0
+        knob:
+          bg_color: 16777215
+          bg_grad_color: 12632256
+          bg_grad_dir: LV_GRAD_DIR_VER
+          bg_opa: 1.0
+      slider:
+        border_width: 1
+        border_opa: 0.15
+        bg_color: 13421258
+        bg_opa: 0.15
+        indicator:
+          bg_color: 1925014
+          bg_grad_color: 209482
+          bg_grad_dir: LV_GRAD_DIR_VER
+          bg_opa: 1.0
+        knob:
+          bg_color: 3116248
+          bg_grad_color: 22402
+          bg_grad_dir: LV_GRAD_DIR_VER
+          bg_opa: 1.0
+          border_color: 30643
+          border_width: 1
+          text_color: 16777215
+      dark_mode: false
+    style_definitions:
+      - id: header_footer
+        bg_color: 3116248
+        bg_grad_color: 22402
+        bg_grad_dir: LV_GRAD_DIR_VER
+        bg_opa: 1.0
+        border_opa: 0.0
+        radius: 0
+        pad_all: 0
+        pad_row: 0
+        pad_column: 0
+        border_color: 30643
+        text_color: 16777215
+        width: 1.0
+        height: 30
+      - id: icons_style
+        bg_color: 3116248
+        bg_grad_color: 22402
+        bg_grad_dir: LV_GRAD_DIR_VER
+        bg_opa: 1.0
+        border_opa: 0.0
+        radius: 0
+        pad_all: 0
+        pad_row: 0
+        pad_column: 0
+        border_color: 30643
+        text_color: 16777215
+        width: 1.0
+        height: 30
+    top_layer:
+      widgets:
+        - buttonmatrix:
+            align: LV_ALIGN_BOTTOM_MID
+            styles:
+              - header_footer
+            pad_all: 0
+            outline_width: 0
+            id: top_layer
+            items:
+              styles:
+                - header_footer
+            rows:
+              - buttons:
+                  - id: page_prev
+                    text: 󰁎
+                    on_press:
+                      - then:
+                          - lvgl.page.previous:
+                              lvgl_id: lvgl_lcd_id
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                    width: 1
+                  - id: page_home_btn
+                    text: 󰋜
+                    on_press:
+                      - then:
+                          - lvgl.page.show:
+                              lvgl_id: lvgl_lcd_id
+                              id: page_home
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                    width: 1
+                  - id: page_next
+                    text: 󰁕
+                    on_press:
+                      - then:
+                          - lvgl.page.next:
+                              lvgl_id: lvgl_lcd_id
+                              animation: LV_SCREEN_LOAD_ANIM_NONE
+                              time: 50ms
+                    width: 1
+            one_checked: false
+        - label:
+            text: 󰌷
+            id: lbl_hastatus
+            hidden: true
+            align: LV_ALIGN_TOP_RIGHT
+            x: -2
+            y: 5
+            text_align: LV_TEXT_ALIGN_RIGHT
+            text_color: 16777215
+        - label:
+            id: lbl_battery_status
+            align: LV_ALIGN_TOP_LEFT
+            x: 52
+            y: 5
+            text_font: roboto_icons_42
+            text: 󰂑
+            text_color: 16777215
+        - button:
+            id: power_btn
+            align: LV_ALIGN_TOP_LEFT
+            x: 2
+            y: 2
+            width: 44
+            height: 40
+            widgets:
+              - label:
+                  align: LV_ALIGN_CENTER
+                  text: 󰐥
+            on_press:
+              - then:
+                  - lvgl.widget.show:
+                      - id: power_menu
+        - obj:
+            id: power_menu
+            hidden: true
+            align: LV_ALIGN_CENTER
+            width: 280
+            height: 210
+            bg_color: 209482
+            bg_opa: 1.0
+            radius: 8
+            border_width: 2
+            border_color: 3116248
+            pad_all: 12
+            layout:
+              type: flex
+              flex_flow: LV_FLEX_FLOW_COLUMN
+              flex_align_main: LV_FLEX_ALIGN_SPACE_EVENLY
+              flex_align_cross: LV_FLEX_ALIGN_CENTER
+              flex_align_track: LV_FLEX_ALIGN_START
+            widgets:
+              - label:
+                  text: Energia
+                  text_color: 16777215
+              - button:
+                  width: 1.0
+                  height: 46
+                  widgets:
+                    - label:
+                        align: LV_ALIGN_CENTER
+                        text: 󰜉 Reiniciar
+                  on_press:
+                    - then:
+                        - lvgl.widget.hide:
+                            - id: power_menu
+                        - button.press:
+                            id: button_reboot
+              - button:
+                  width: 1.0
+                  height: 46
+                  widgets:
+                    - label:
+                        align: LV_ALIGN_CENTER
+                        text: 󰐥 Desligar
+                  on_press:
+                    - then:
+                        - lvgl.widget.hide:
+                            - id: power_menu
+                        - script.execute:
+                            id: power_off_sequence
+              - button:
+                  width: 1.0
+                  height: 40
+                  widgets:
+                    - label:
+                        align: LV_ALIGN_CENTER
+                        text: Cancelar
+                  on_press:
+                    - then:
+                        - lvgl.widget.hide:
+                            - id: power_menu
+        - obj:
+            id: epaper_menu
+            hidden: true
+            align: LV_ALIGN_CENTER
+            width: 300
+            height: 240
+            bg_color: 209482
+            bg_opa: 1.0
+            radius: 8
+            border_width: 2
+            border_color: 3116248
+            pad_all: 12
+            layout:
+              type: flex
+              flex_flow: LV_FLEX_FLOW_COLUMN
+              flex_align_main: LV_FLEX_ALIGN_SPACE_EVENLY
+              flex_align_cross: LV_FLEX_ALIGN_CENTER
+              flex_align_track: LV_FLEX_ALIGN_START
+            widgets:
+              - label:
+                  text: Papel
+                  text_color: 16777215
+              - button:
+                  width: 1.0
+                  height: 44
+                  widgets:
+                    - label:
+                        align: LV_ALIGN_CENTER
+                        text: Lista de Compras
+                  on_press:
+                    - then:
+                        - lvgl.widget.hide:
+                            - id: epaper_menu
+                        - lvgl.page.show:
+                            lvgl_id: lvgl_epaper_id
+                            id: ep_shopping
+                            animation: LV_SCREEN_LOAD_ANIM_NONE
+                            time: 50ms
+                        - lvgl.resume:
+                            lvgl_id: lvgl_epaper_id
+                        - lvgl.widget.redraw:
+                            lvgl_id: lvgl_epaper_id
+                        - delay: 100ms
+                        - component.update:
+                            id: epaper_disp
+              - button:
+                  width: 1.0
+                  height: 44
+                  widgets:
+                    - label:
+                        align: LV_ALIGN_CENTER
+                        text: Refeições & Tempo
+                  on_press:
+                    - then:
+                        - lvgl.widget.hide:
+                            - id: epaper_menu
+                        - lvgl.page.show:
+                            lvgl_id: lvgl_epaper_id
+                            id: ep_info
+                            animation: LV_SCREEN_LOAD_ANIM_NONE
+                            time: 50ms
+                        - lvgl.resume:
+                            lvgl_id: lvgl_epaper_id
+                        - lvgl.widget.redraw:
+                            lvgl_id: lvgl_epaper_id
+                        - delay: 100ms
+                        - component.update:
+                            id: epaper_disp
+              - button:
+                  width: 1.0
+                  height: 38
+                  widgets:
+                    - label:
+                        align: LV_ALIGN_CENTER
+                        text: Cancelar
+                  on_press:
+                    - then:
+                        - lvgl.widget.hide:
+                            - id: epaper_menu
+        - obj:
+            id: boot_screen
+            x: 0
+            y: 0
+            width: 1.0
+            height: 1.0
+            bg_color: 16777215
+            bg_opa: 1.0
+            radius: 0
+            pad_all: 0
+            border_width: 0
+            widgets:
+              - image:
+                  align: LV_ALIGN_CENTER
+                  src: boot_logo
+                  y: -40
+              - spinner:
+                  align: LV_ALIGN_CENTER
+                  y: 95
+                  height: 50
+                  width: 50
+                  spin_time: 1s
+                  arc_length: 60
+                  arc_width: 8
+                  indicator:
+                    arc_color: 1621234
+                    arc_width: 8
+            on_press:
+              - then:
+                  - lvgl.widget.hide:
+                      - id: boot_screen
+    update_interval: 1s
+    color_depth: 16
+    default_font: montserrat_14
+    full_refresh: false
+    update_when_display_idle: false
+    draw_rounding: 2
+    page_wrap: true
+    transparency_key: <removed>
+    encoders: []
+    keypads: []
+    resume_on_input: true
+    paused: false
+    debug_outline: false
+    byte_order: big_endian
+  - id: lvgl_epaper_id
+    displays:
+      - epaper_disp
+    default_font: epaper_font_med
+    log_level: ERROR
+    rotation: 0
+    paused: true
+    bg_color: 0
+    text_color: 16777215
+    pages:
+      - id: ep_shopping
+        bg_color: 0
+        widgets:
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 4
+              y: 2
+              text_font: epaper_font_title
+              text_color: 16777215
+              text: Compras
+          - line:
+              points:
+                - x: 0
+                  y: 30
+                - x: 128
+                  y: 30
+              line_width: 2
+              line_color: 16777215
+          - label:
+              id: lbl_ep_shopping
+              align: LV_ALIGN_TOP_LEFT
+              x: 4
+              y: 36
+              width: 120
+              height: 256
+              text_font: epaper_font_small
+              text_color: 16777215
+              long_mode: LV_LABEL_LONG_WRAP
+              text: (lista vazia)
+        skip: false
+      - id: ep_info
+        bg_color: 0
+        widgets:
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 4
+              y: 2
+              text_font: epaper_font_med
+              text_color: 16777215
+              text: Refeições
+          - line:
+              points:
+                - x: 0
+                  y: 26
+                - x: 128
+                  y: 26
+              line_width: 2
+              line_color: 16777215
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 4
+              y: 32
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: 'Hoje:'
+          - label:
+              id: lbl_ep_meal_today
+              align: LV_ALIGN_TOP_LEFT
+              x: 6
+              y: 50
+              width: 118
+              text_font: epaper_font_small
+              text_color: 16777215
+              long_mode: LV_LABEL_LONG_WRAP
+              text: --
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 4
+              y: 120
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: 'Amanhã:'
+          - label:
+              id: lbl_ep_meal_tomorrow
+              align: LV_ALIGN_TOP_LEFT
+              x: 6
+              y: 138
+              width: 118
+              text_font: epaper_font_small
+              text_color: 16777215
+              long_mode: LV_LABEL_LONG_WRAP
+              text: --
+          - line:
+              points:
+                - x: 0
+                  y: 208
+                - x: 128
+                  y: 208
+              line_width: 2
+              line_color: 16777215
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 4
+              y: 214
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: Agora
+          - label:
+              id: lbl_ep_weather_now
+              align: LV_ALIGN_TOP_RIGHT
+              x: -6
+              y: 210
+              text_font: epaper_font_title
+              text_color: 16777215
+              text: --°C
+          - line:
+              points:
+                - x: 0
+                  y: 236
+                - x: 128
+                  y: 236
+              line_width: 1
+              line_color: 16777215
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 66
+              y: 240
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: máx
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 98
+              y: 240
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: mín
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 4
+              y: 259
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: Hoje
+          - label:
+              id: lbl_ep_today_max
+              align: LV_ALIGN_TOP_LEFT
+              x: 66
+              y: 259
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: --°
+          - label:
+              id: lbl_ep_today_min
+              align: LV_ALIGN_TOP_LEFT
+              x: 98
+              y: 259
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: --°
+          - label:
+              align: LV_ALIGN_TOP_LEFT
+              x: 4
+              y: 278
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: Amanhã
+          - label:
+              id: lbl_ep_tomorrow_max
+              align: LV_ALIGN_TOP_LEFT
+              x: 66
+              y: 278
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: --°
+          - label:
+              id: lbl_ep_tomorrow_min
+              align: LV_ALIGN_TOP_LEFT
+              x: 98
+              y: 278
+              text_font: epaper_font_small
+              text_color: 16777215
+              text: --°
+        skip: false
+    update_interval: 1s
+    color_depth: 16
+    full_refresh: false
+    update_when_display_idle: false
+    draw_rounding: 2
+    buffer_size: 0.0
+    page_wrap: true
+    transparency_key: <removed>
+    touchscreens:
+      - long_press_repeat_time: 100ms
+        long_press_time: 400ms
+    encoders: []
+    keypads: []
+    resume_on_input: true
+    debug_outline: false
+    byte_order: big_endian
+speaker:
+  - platform: i2s_audio
+    i2s_audio_id: i2s_output
+    sample_rate: 48000
+    id: speaker_id
+    i2s_dout_pin: 12
+    channel: mono
+    buffer_duration: 100ms
+    bits_per_sample: 16
+    i2s_mode: primary
+    use_apll: false
+    mclk_multiple: 256
+    timeout: 500ms
+    i2s_comm_fmt: stand_i2s
+    spdif_mode: false
+    dac_type: external
+    num_channels: 1
+    min_bits_per_sample: 8
+    max_bits_per_sample: 32
+    min_channels: 1
+    max_channels: 2
+    min_sample_rate: 16000
+    max_sample_rate: 48000
+  - platform: mixer
+    id: mixing_speaker
+    output_speaker: &id001 speaker_id
+    num_channels: 1
+    source_speakers:
+      - id: announcement_mixing_input
+        timeout: never
+        buffer_duration: 100ms
+        output_speaker: *id001
+        bits_per_sample: 16
+        num_channels: 1
+        sample_rate: 48000
+      - id: media_mixing_input
+        timeout: never
+        buffer_duration: 100ms
+        output_speaker: *id001
+        bits_per_sample: 16
+        num_channels: 1
+        sample_rate: 48000
+      - id: sendspin_mixing_input
+        timeout: never
+        buffer_duration: 100ms
+        output_speaker: *id001
+        bits_per_sample: 16
+        num_channels: 1
+        sample_rate: 48000
+    queue_mode: false
+    bits_per_sample: 16
+  - platform: resampler
+    id: announcement_resampling_speaker
+    output_speaker: announcement_mixing_input
+    sample_rate: 48000
+    bits_per_sample: passthrough
+    buffer_duration: 100ms
+    filters: 16
+    taps: 16
+    min_bits_per_sample: 16
+    max_bits_per_sample: 32
+    num_channels: 1
+  - platform: resampler
+    id: media_resampling_speaker
+    output_speaker: media_mixing_input
+    sample_rate: 48000
+    bits_per_sample: passthrough
+    buffer_duration: 100ms
+    filters: 16
+    taps: 16
+    min_bits_per_sample: 16
+    max_bits_per_sample: 32
+    num_channels: 1
+  - platform: resampler
+    id: sendspin_resampling_speaker
+    output_speaker: sendspin_mixing_input
+    sample_rate: 48000
+    bits_per_sample: 16
+    buffer_duration: 100ms
+    filters: 16
+    taps: 16
+    min_bits_per_sample: 16
+    max_bits_per_sample: 32
+    num_channels: 1
+media_player:
+  - platform: speaker
+    id: external_media_player
+    name: ''
+    internal: false
+    volume_min: 0.0
+    volume_max: 1.0
+    volume_increment: 0.15
+    announcement_pipeline:
+      speaker: announcement_resampling_speaker
+      format: FLAC
+      num_channels: 1
+      sample_rate: 48000
+    media_pipeline:
+      speaker: media_resampling_speaker
+      format: FLAC
+      num_channels: 1
+      sample_rate: 48000
+    on_announcement:
+      - then:
+          - mixer_speaker.apply_ducking:
+              id: media_mixing_input
+              decibel_reduction: 20
+              duration: 0s
+    files:
+      - id: alarm_sound
+        file:
+          path: /config/esphome/ha-hmi-libs/sounds/alarm.flac
+          type: local
+      - id: beep
+        file:
+          path: /config/esphome/ha-hmi-libs/sounds/r2d2d.flac
+          type: local
+    disabled_by_default: false
+    buffer_size: 1000000
+    volume_initial: 0.5
+  - platform: sendspin
+    id: sendspin_group_media_player
+    name: Sendspin Group
+    disabled_by_default: false
+    volume_increment: 0.05
+  - platform: speaker_source
+    id: sendspin_media_player
+    name: Sendspin
+    internal: false
+    media_pipeline:
+      speaker: sendspin_resampling_speaker
+      format: FLAC
+      num_channels: 1
+      sample_rate: 48000
+      sources:
+        - sendspin_source
+    volume_increment: 0.05
+    volume_initial: 0.5
+    volume_max: 1.0
+    volume_min: 0.0
+    disabled_by_default: false
+sendspin:
+  id: sendspin_hub
+  task_stack_in_psram: true
+media_source:
+  - platform: sendspin
+    id: sendspin_source
+    buffer_size: 1000000
+    initial_static_delay: 0ms
+    static_delay_adjustable: false
+    fixed_delay: 0us
+    sample_rate: 48000
+    codecs:
+      - flac
+      - opus
+      - pcm
+i2s_audio:
+  - id: i2s_output
+    i2s_lrclk_pin: 14
+    i2s_bclk_pin: 13
+  - id: i2s_input
+    i2s_lrclk_pin: 5
+    i2s_bclk_pin: 6
+microphone:
+  - platform: i2s_audio
+    id: external_microphone
+    i2s_audio_id: i2s_input
+    i2s_din_pin: 7
+    channel: left
+    sample_rate: 16000
+    bits_per_sample: 32
+    correct_dc_offset: true
+    pdm: false
+    use_apll: true
+    i2s_mode: primary
+    mclk_multiple: 256
+    pdm_dsr: 8
+    adc_type: external
+    num_channels: 1
+    min_bits_per_sample: 32
+    max_bits_per_sample: 32
+    min_channels: 1
+    max_channels: 1
+    min_sample_rate: 16000
+    max_sample_rate: 16000
+voice_assistant:
+  id: va
+  microphone:
+    - microphone: external_microphone
+      gain_factor: 16
+      channels:
+        - 0
+      bits_per_sample: 16
+  media_player: external_media_player
+  micro_wake_word: mww
+  noise_suppression_level: 2
+  auto_gain: 0
+  volume_multiplier: 1.0
+  on_client_connected:
+    then:
+      - lambda: !lambda |-
+          id(init_in_progress) = false;
+      - if:
+          condition:
+            switch.is_on:
+              id: voice_enabled
+          then:
+            - micro_wake_word.start: {}
+            - lambda: !lambda |-
+                id(voice_assistant_phase) = 1;
+          else:
+            - lambda: !lambda |-
+                id(voice_assistant_phase) = 12;
+      - light.turn_on:
+          id: led_strip
+          blue: 0.1
+          red: 0.1
+          green: 1.0
+          effect: Waiting for wake word
+          state: true
+      - delay: 5s
+      - light.turn_off:
+          id: led_strip
+          state: false
+  on_client_disconnected:
+    then:
+      - lambda: !lambda |-
+          id(voice_assistant_phase) = 10;
+      - micro_wake_word.stop: {}
+  on_listening:
+    then:
+      - lambda: !lambda |-
+          id(voice_assistant_phase) = 2;
+          id(is_tts_active) = false;
+          id(question_flag) = false;
+      - light.turn_on:
+          id: led_strip
+          blue: 0.0
+          red: 1.0
+          green: 0.0
+          brightness: 0.5
+          effect: Fast Pulse
+          state: true
+      - script.execute:
+          id: listening_timeout
+  on_stt_vad_start:
+    then:
+      - script.stop:
+          id: listening_timeout
+  on_stt_vad_end:
+    then:
+      - light.turn_off:
+          id: led_strip
+          state: false
+      - lambda: !lambda |-
+          id(voice_assistant_phase) = 3;
+  on_stt_end:
+    then:
+      - homeassistant.event:
+          event: esphome.stt_text
+          data:
+            text: !lambda |-
+              return x;
+          data_template: {}
+          variables: {}
+  on_intent_progress:
+    then:
+      - if:
+          condition:
+            lambda: !lambda |-
+              return !x.empty();
+          then:
+            - lambda: !lambda |-
+                id(voice_assistant_phase) = 4;
+            - lambda: !lambda |-
+                id(is_tts_active) = true;
+            - script.execute:
+                id: activate_stop_word_once
+  on_tts_start:
+    then:
+      - if:
+          condition:
+            lambda: !lambda |-
+              return id(voice_assistant_phase) != 4;
+          then:
+            - lambda: !lambda |-
+                id(voice_assistant_phase) = 4;
+            - script.execute:
+                id: activate_stop_word_once
+      - lambda: !lambda |-
+          bool is_question = false;
+          if (!x.empty() && x.back() == '?') {
+            is_question = true;
+          }
+          id(question_flag) = is_question;
+      - if:
+          condition:
+            switch.is_on:
+              id: extended_dialog
+          then:
+            - lambda: !lambda |-
+                id(is_tts_active) = true;
+  on_timer_finished:
+    then:
+      - switch.turn_on:
+          id: timer_ringing
+  on_end:
+    then:
+      - if:
+          condition:
+            and:
+              - light.is_on:
+                  id: led_strip
+          then:
+            - light.turn_off:
+                id: led_strip
+                state: false
+      - wait_until:
+          condition:
+            and:
+              - media_player.is_announcing:
+                  id: external_media_player
+          timeout: 500ms
+      - wait_until:
+          condition:
+            not:
+              voice_assistant.is_running: {}
+      - delay: 500ms
+      - if:
+          condition:
+            and:
+              - switch.is_on:
+                  id: continued_conversation_enabled
+              - lambda: !lambda |-
+                  return !id(question_flag);
+              - lambda: !lambda |-
+                  return id(is_tts_active);
+              - lambda: !lambda |-
+                  return id(last_wake_word) != "Stop";
+          then:
+            - voice_assistant.start:
+                wake_word: !lambda |-
+                  return id(last_wake_word);
+                silence_detection: true
+          else:
+            - mixer_speaker.apply_ducking:
+                id: media_mixing_input
+                decibel_reduction: !lambda |-
+                  return id(ducking_decibel).state;
+                duration: 1s
+            - lambda: !lambda |-
+                id(voice_assistant_phase) = 1;
+  on_error:
+    then:
+      - if:
+          condition:
+            lambda: !lambda |-
+              return !id(init_in_progress);
+          then:
+            - lambda: !lambda |-
+                id(voice_assistant_phase) = 11;
+            - delay: 1s
+            - if:
+                condition:
+                  switch.is_on:
+                    id: voice_enabled
+                then:
+                  - lambda: !lambda |-
+                      id(voice_assistant_phase) = 1;
+                else:
+                  - lambda: !lambda |-
+                      id(voice_assistant_phase) = 12;
+  use_wake_word: false
+  conversation_timeout: 300s
+micro_wake_word:
+  models:
+    - model:
+        url: https://github.com/kahrendt/microWakeWord/releases/download/okay_nabu_20241226.3/okay_nabu.json
+        type: http
+      id: okay_nabu
+      internal: false
+    - model:
+        url: https://raw.githubusercontent.com/Darkmadda/ha-v-pe/refs/heads/main/hey_glados.json
+        type: http
+      id: hey_glados
+      internal: false
+    - model:
+        url: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
+        type: http
+      id: stop
+      internal: true
+  vad:
+    model:
+      url: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/vad.json
+      type: http
+    internal: false
+  id: mww
+  stop_after_detection: false
+  on_wake_word_detected:
+    then:
+      - if:
+          condition:
+            switch.is_on:
+              id: timer_ringing
+          then:
+            - switch.turn_off:
+                id: timer_ringing
+          else:
+            - if:
+                condition:
+                  switch.is_on:
+                    id: voice_enabled
+                then:
+                  - if:
+                      condition:
+                        voice_assistant.is_running: {}
+                      then:
+                        - lambda: !lambda |-
+                            id(last_wake_word) = wake_word;
+                        - delay: 100ms
+                        - voice_assistant.stop: {}
+                      else:
+                        - if:
+                            condition:
+                              media_player.is_announcing:
+                                id: external_media_player
+                            then:
+                              - media_player.stop:
+                                  id: external_media_player
+                                  announcement: true
+                            else:
+                              - lambda: !lambda |-
+                                  id(last_wake_word) = wake_word;
+                              - script.execute:
+                                  id: play_sound
+                                  priority: true
+                                  sound_file: !lambda |-
+                                    return const_cast<esphome::audio::AudioFile*>(id(beep));
+                              - delay: 280ms
+                              - voice_assistant.start:
+                                  wake_word: !lambda |-
+                                    return wake_word;
+                                  silence_detection: true
+  microphone:
+    gain_factor: 1
+    channels:
+      - 0
+    bits_per_sample: 16
+select:
+  - platform: template
+    name: Wake word sensitivity
+    optimistic: true
+    initial_option: Slightly sensitive
+    restore_value: true
+    entity_category: config
+    options:
+      - Slightly sensitive
+      - Slightly+ sensitive
+      - Moderately sensitive
+      - Very sensitive
+    on_value:
+      - then:
+          - lambda: !lambda |-
+              if (x == "Slightly sensitive") {
+                id(okay_nabu).set_probability_cutoff(217);    // 0.85 -> 0.000 FAPH on DipCo (Manifest's default)
+              } else if (x == "Slightly+ sensitive") {
+                id(okay_nabu).set_probability_cutoff(191);    // 0.75
+              } else if (x == "Moderately sensitive") {
+                id(okay_nabu).set_probability_cutoff(176);    // 0.69 -> 0.376 FAPH on DipCo
+              } else if (x == "Very sensitive") {
+                id(okay_nabu).set_probability_cutoff(143);    // 0.56 -> 0.751 FAPH on DipCo
+              }
+    disabled_by_default: false
+    update_interval: 60s
+  - platform: logger
+    id: logger_select
+    name: Logger Level
+    disabled_by_default: true
+    entity_category: config
+    icon: mdi:bug
+remote_transmitter:
+  - id: ir_transmitter
+    pin:
+      number: 8
+      mode:
+        output: true
+        input: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      inverted: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    carrier_duty_percent: 50
+    non_blocking: true
+    use_dma: false
+    rmt_symbols: 48
+    on_transmit:
+      then:
+        - logger.log:
+            format: 'IR: transmit started'
+            args: []
+            level: DEBUG
+            tag: main
+    on_complete:
+      then:
+        - logger.log:
+            format: 'IR: transmit complete'
+            args: []
+            level: DEBUG
+            tag: main
+remote_receiver:
+  - id: ir_receiver
+    pin:
+      number: 20
+      inverted: true
+      mode:
+        input: true
+        output: false
+        open_drain: false
+        pullup: false
+        pulldown: false
+      ignore_pin_validation_error: false
+      ignore_strapping_warning: false
+      drive_strength: 20.0
+    tolerance:
+      value: 25
+      type: percentage
+    dump:
+      - beo4: {}
+      - brennenstuhl: {}
+      - byronsx: {}
+      - canalsat: {}
+      - canalsatld: {}
+      - coolix: {}
+      - dish: {}
+      - dooya: {}
+      - dyson: {}
+      - jvc: {}
+      - lg: {}
+      - magiquest: {}
+      - keeloq: {}
+      - nec: {}
+      - pioneer: {}
+      - pronto: {}
+      - gobox: {}
+      - roomba: {}
+      - sony: {}
+      - symphony: {}
+      - raw: {}
+      - drayton: {}
+      - rc5: {}
+      - rc6: {}
+      - rc_switch: {}
+      - samsung: {}
+      - samsung36: {}
+      - toshiba_ac: {}
+      - panasonic: {}
+      - nexa: {}
+      - midea: {}
+      - aeha: {}
+      - hob2hood: {}
+      - haier: {}
+      - abbwelcome: {}
+      - mirage: {}
+      - toto: {}
+    filter: 50us
+    idle: 10ms
+    rmt_symbols: 192
+    receive_symbols: 192
+    carrier_duty_percent: 100
+    carrier_frequency: 0
+infrared:
+  - platform: ir_rf_proxy
+    name: IR Transmitter
+    remote_transmitter_id: ir_transmitter
+    disabled_by_default: false
+    frequency: 0.0
+  - platform: ir_rf_proxy
+    name: IR Receiver
+    receiver_frequency: 38000.0
+    remote_receiver_id: ir_receiver
+    disabled_by_default: false
+    frequency: 0.0
