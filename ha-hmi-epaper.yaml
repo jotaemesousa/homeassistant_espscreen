@@ -1,0 +1,250 @@
+# HA-HMI: the 2.9-inch e-paper (Waveshare 2.90in, 128 x 296 standing up), as Home Assistant entities (ESPHome
+# integration). Included by ha-hmi-espscreens.yaml; take the line out there to build without it.
+#
+#   E-paper page        select: Shopping list, or Meals and weather
+#   Add E-paper         button: reset the panel, set it up and draw it (after plugging it in, or when it shows junk)
+#   E-paper present     binary sensor: the panel's connector on GPIO1; plugging it in does what Add E-paper does
+#
+# It draws with ESPHome's display lambda, not LVGL: the screen's LVGL drives the LCD alone. Every refresh is a full one
+# (no ghosting, and correct right after a panel is plugged in), so it waits 5 s for changes to settle before drawing.
+# It reads what ha-hmi.yaml read: sensor.hmi_grocery_list (attribute active, one item a line), sensor.hmi_meal_today,
+# sensor.hmi_meal_tomorrow, weather.forecast_home (attribute temperature) and sensor.hmi_weather_forecast (attribute
+# forecast_compact, "day|condition|high|low;..." with today first).
+#
+# No esphome: on_boot here: it would replace the core's boot block whole. A panel plugged in at the start is drawn by
+# E-paper present, which fires for its first state too.
+spi:
+  - id: hahmi_epaper_bus
+    clk_pin: GPIO17
+    mosi_pin: GPIO10
+
+# The panel's reset, held by this file rather than the driver, so Add E-paper can reset a panel without setting the
+# driver up again (each setup adds another device to the SPI bus).
+output:
+  - platform: gpio
+    id: hahmi_epaper_reset
+    pin:
+      number: GPIO15
+      inverted: true
+
+font:
+  - file: "${FONT_DIR}/Roboto-400.ttf"
+    id: hahmi_ep_title
+    size: 22
+    bpp: 1
+    glyphsets: [GF_Latin_Core]
+  - file: "${FONT_DIR}/Roboto-400.ttf"
+    id: hahmi_ep_med
+    size: 16
+    bpp: 1
+    glyphsets: [GF_Latin_Core]
+  - file: "${FONT_DIR}/Roboto-400.ttf"
+    id: hahmi_ep_small
+    size: 13
+    bpp: 1
+    glyphsets: [GF_Latin_Core]
+
+text_sensor:
+  - platform: homeassistant
+    id: hahmi_ep_grocery
+    entity_id: sensor.hmi_grocery_list
+    attribute: active
+    internal: true
+    on_value:
+      - script.execute: hahmi_epaper_draw
+  - platform: homeassistant
+    id: hahmi_ep_meal_today
+    entity_id: sensor.hmi_meal_today
+    internal: true
+    on_value:
+      - script.execute: hahmi_epaper_draw
+  - platform: homeassistant
+    id: hahmi_ep_meal_tomorrow
+    entity_id: sensor.hmi_meal_tomorrow
+    internal: true
+    on_value:
+      - script.execute: hahmi_epaper_draw
+  - platform: homeassistant
+    id: hahmi_ep_forecast
+    entity_id: sensor.hmi_weather_forecast
+    attribute: forecast_compact
+    internal: true
+    on_value:
+      - script.execute: hahmi_epaper_draw
+
+sensor:
+  - platform: homeassistant
+    id: hahmi_ep_temperature
+    entity_id: weather.forecast_home
+    attribute: temperature
+    internal: true
+    on_value:
+      - script.execute: hahmi_epaper_draw
+
+select:
+  - platform: template
+    id: hahmi_epaper_page
+    name: "E-paper page"
+    icon: "mdi:book-open-page-variant"
+    optimistic: true
+    restore_value: true
+    initial_option: "Shopping list"
+    options: ["Shopping list", "Meals and weather"]
+    on_value:
+      - script.execute: hahmi_epaper_draw
+
+button:
+  - platform: template
+    name: "Add E-paper"
+    icon: "mdi:book-refresh"
+    entity_category: config
+    on_press:
+      - script.execute: hahmi_epaper_add
+
+binary_sensor:
+  - platform: gpio
+    id: hahmi_epaper_present
+    name: "E-paper present"
+    device_class: connectivity
+    entity_category: diagnostic
+    pin:
+      number: GPIO1
+      mode: {input: true, pullup: true}
+      inverted: true
+    filters:
+      - delayed_on: 250ms
+    trigger_on_initial_state: true
+    on_press:
+      - script.execute: hahmi_epaper_add
+
+script:
+  - id: hahmi_epaper_draw
+    mode: restart
+    then:
+      - delay: 5s
+      - component.update: hahmi_epaper
+  - id: hahmi_epaper_add
+    mode: single
+    then:
+      - output.turn_on: hahmi_epaper_reset
+      - delay: 200ms
+      - output.turn_off: hahmi_epaper_reset
+      - delay: 200ms
+      - lambda: 'id(hahmi_epaper).initialize();'
+      - script.execute: hahmi_epaper_draw
+
+display:
+  - platform: waveshare_epaper
+    id: hahmi_epaper
+    spi_id: hahmi_epaper_bus
+    model: 2.90in
+    cs_pin: GPIO16
+    dc_pin: GPIO11
+    # Pulled down: a panel that is not plugged in reads idle instead of holding the start in a busy wait.
+    busy_pin:
+      number: GPIO9
+      mode: {input: true, pulldown: true}
+    data_rate: 2MHz
+    full_update_every: 1
+    update_interval: never
+    lambda: |-
+      const int W = it.get_width();
+      auto text_w = [&](display::BaseFont *f, const std::string &s) {
+        int x1, y1, w, h;
+        it.get_text_bounds(0, 0, s.c_str(), f, display::TextAlign::TOP_LEFT, &x1, &y1, &w, &h);
+        return w;
+      };
+      // Prints text word-wrapped into width w from (x, y), a line every lh px, never below max_y; returns the next y.
+      auto wrap = [&](display::BaseFont *f, int x, int y, int w, int lh, int max_y, const std::string &text) {
+        std::string line;
+        size_t i = 0;
+        while (i <= text.size() && y + lh <= max_y) {
+          size_t j = text.find_first_of(" \n", i);
+          if (j == std::string::npos) j = text.size();
+          const std::string word = text.substr(i, j - i);
+          const std::string next = line.empty() ? word : line + " " + word;
+          if (!line.empty() && text_w(f, next) > w) {
+            it.print(x, y, f, line.c_str());
+            y += lh;
+            line = word;
+          } else {
+            line = next;
+          }
+          if (j >= text.size() || text[j] == '\n') {
+            if (!line.empty() && y + lh <= max_y) {
+              it.print(x, y, f, line.c_str());
+              y += lh;
+            }
+            line.clear();
+          }
+          i = j + 1;
+        }
+        return y;
+      };
+
+      auto page = id(hahmi_epaper_page).active_index();
+      if (!page.has_value() || *page == 0) {
+        it.print(4, 2, id(hahmi_ep_title), "Compras");
+        it.filled_rectangle(0, 30, W, 2);
+        const std::string &list = id(hahmi_ep_grocery).state;
+        int y = 36;
+        size_t start = 0;
+        bool any = false;
+        while (start < list.size() && y < 296) {
+          size_t nl = list.find('\n', start);
+          std::string item = list.substr(start, nl == std::string::npos ? std::string::npos : nl - start);
+          if (!item.empty() && item.back() == '\r') item.pop_back();
+          if (!item.empty()) {
+            y = wrap(id(hahmi_ep_small), 4, y, 120, 16, 296, "- " + item);
+            any = true;
+          }
+          if (nl == std::string::npos) break;
+          start = nl + 1;
+        }
+        if (!any) it.print(4, 36, id(hahmi_ep_small), "(lista vazia)");
+        return;
+      }
+
+      // forecast_compact: "day|condition|high|low;..." with today first, then tomorrow.
+      std::string fc[2][4];
+      const std::string &s = id(hahmi_ep_forecast).state;
+      size_t start = 0;
+      for (int d = 0; d < 2; d++) {
+        size_t sep = s.find(';', start);
+        const std::string item = s.substr(start, sep == std::string::npos ? std::string::npos : sep - start);
+        size_t p = 0;
+        for (int f = 0; f < 4; f++) {
+          size_t q = item.find('|', p);
+          fc[d][f] = item.substr(p, q == std::string::npos ? std::string::npos : q - p);
+          if (q == std::string::npos) break;
+          p = q + 1;
+        }
+        if (sep == std::string::npos) break;
+        start = sep + 1;
+      }
+      auto deg = [](const std::string &v) { return (v.empty() ? std::string("--") : v) + "°"; };
+      auto meal = [](const std::string &v) { return v.empty() ? std::string("--") : v; };
+
+      it.print(4, 2, id(hahmi_ep_med), "Refeições");
+      it.filled_rectangle(0, 26, W, 2);
+      it.print(4, 32, id(hahmi_ep_small), "Hoje:");
+      wrap(id(hahmi_ep_small), 6, 50, 118, 16, 118, meal(id(hahmi_ep_meal_today).state));
+      it.print(4, 120, id(hahmi_ep_small), "Amanhã:");
+      wrap(id(hahmi_ep_small), 6, 138, 118, 16, 206, meal(id(hahmi_ep_meal_tomorrow).state));
+      it.filled_rectangle(0, 208, W, 2);
+      it.print(4, 214, id(hahmi_ep_small), "Agora");
+      const float t = id(hahmi_ep_temperature).state;
+      if (std::isnan(t)) {
+        it.print(W - 6, 210, id(hahmi_ep_title), display::TextAlign::TOP_RIGHT, "--°C");
+      } else {
+        it.printf(W - 6, 210, id(hahmi_ep_title), display::TextAlign::TOP_RIGHT, "%.0f°C", t);
+      }
+      it.horizontal_line(0, 236, W);
+      it.print(66, 240, id(hahmi_ep_small), "máx");
+      it.print(98, 240, id(hahmi_ep_small), "mín");
+      it.print(4, 259, id(hahmi_ep_small), "Hoje");
+      it.print(66, 259, id(hahmi_ep_small), deg(fc[0][2]).c_str());
+      it.print(98, 259, id(hahmi_ep_small), deg(fc[0][3]).c_str());
+      it.print(4, 278, id(hahmi_ep_small), "Amanhã");
+      it.print(66, 278, id(hahmi_ep_small), deg(fc[1][2]).c_str());
+      it.print(98, 278, id(hahmi_ep_small), deg(fc[1][3]).c_str());

@@ -9,19 +9,16 @@
 # pad (GPIO3) wakes it, and it starts again from the beginning. It never sleeps during an update, or while the speaker is
 # in use (music, an announcement, the voice assistant). The 3.3 V rail of the display and the other parts is switched
 # off while it sleeps, as ha-hmi.yaml did.
-esphome:
-  on_boot:
-    # Before the hardware is set up: let go of the rail's pin, which the sleep held high (rail off).
-    - priority: 1000
-      then:
-        - lambda: |-
-            gpio_hold_dis(GPIO_NUM_21);
-            gpio_deep_sleep_hold_dis();
-
+#
+# No esphome: on_boot here: it would replace the core's boot block whole, and the screen would never take its tiles.
 globals:
   - id: hahmi_dimmed_since
     type: uint32_t
     initial_value: '0'
+  # Made before any component is set up: lets go of the rail's pin, which the sleep held high (rail off).
+  - id: hahmi_rail_released
+    type: bool
+    initial_value: '[]() { gpio_hold_dis(GPIO_NUM_21); gpio_deep_sleep_hold_dis(); return true; }()'
 
 deep_sleep:
   id: hahmi_deep_sleep

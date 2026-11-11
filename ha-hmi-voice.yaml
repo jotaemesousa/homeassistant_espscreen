@@ -2,11 +2,14 @@
 # integration). Included by ha-hmi-espscreens.yaml; take the line out there to build without it. It answers on the
 # screen's speaker (the screen's Media Player) and listens on its microphone; the screen's Microphone switch mutes it.
 #
-#   Voice assistant              switch: listen for the wake word (off at first)
-#   okay_nabu, hey_glados        switches of ESPHome's micro_wake_word: which wake words count
+#   Voice assistant              switch: listen for the wake word (on at first)
 #   Wake word sensitivity        select
 #   Continued conversation       switch: after an answer that ends in a question, listen again without the wake word
 #   Ask the voice assistant      button: start a conversation without the wake word
+#   Voice assistant status       text sensor: Idle, Listening, Thinking, Replying, or the last pipeline error
+#
+# One wake word listens at a time: okay_nabu at first, hey_glados when the device's "Wake word" select in Home
+# Assistant (the Assist satellite's configuration) picks it.
 #
 # The device also appears as an Assist satellite in Home Assistant, where its pipeline is chosen. "Stop" ends an answer
 # while it is spoken. A finished timer wakes the screen, pulses the LED strip and fires the event
@@ -27,7 +30,7 @@ switch:
     icon: "mdi:account-voice"
     entity_category: config
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: RESTORE_DEFAULT_ON
     on_turn_on:
       - script.execute: hahmi_listen
     on_turn_off:
@@ -41,6 +44,13 @@ switch:
     entity_category: config
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
+
+text_sensor:
+  - platform: template
+    id: hahmi_voice_status
+    name: "Voice assistant status"
+    icon: "mdi:account-voice"
+    entity_category: diagnostic
 
 select:
   - platform: template
@@ -122,6 +132,7 @@ voice_assistant:
     - micro_wake_word.stop:
     - lambda: 'audio_owner::the().release(audio_owner::Side::BOTH, audio_owner::Role::VOICE);'
   on_listening:
+    - text_sensor.template.publish: {id: hahmi_voice_status, state: "Listening"}
     - light.turn_on:
         id: board_led_strip
         red: 0.1
@@ -130,6 +141,7 @@ voice_assistant:
         brightness: 0.5
         effect: Fast Pulse
   on_stt_vad_end:
+    - text_sensor.template.publish: {id: hahmi_voice_status, state: "Thinking"}
     - light.turn_on:
         id: board_led_strip
         red: 0.6
@@ -138,16 +150,26 @@ voice_assistant:
         brightness: 0.4
         effect: Slow Pulse
   on_tts_start:
+    - text_sensor.template.publish: {id: hahmi_voice_status, state: "Replying"}
     - lambda: 'id(hahmi_question) = !x.empty() && x.back() == ''?'';'
     - micro_wake_word.enable_model: stop
   on_end:
     - light.turn_off: board_led_strip
+    # The reply starts playing a moment after the pipeline ends: wait for it to start, then to finish.
+    - wait_until:
+        condition:
+          media_player.is_announcing: ts_media_player
+        timeout: 500ms
     - wait_until:
         condition:
           not:
             media_player.is_announcing: ts_media_player
         timeout: 60s
     - micro_wake_word.disable_model: stop
+    - lambda: |-
+        if (id(hahmi_voice_status).state.rfind("Error", 0) != 0) {
+          id(hahmi_voice_status).publish_state("Idle");
+        }
     - if:
         condition:
           lambda: 'return id(hahmi_question) && id(hahmi_continued).state && id(hahmi_wake_word) != "Stop";'
@@ -158,8 +180,19 @@ voice_assistant:
               wake_word: !lambda 'return id(hahmi_wake_word);'
               silence_detection: true
         else:
-          - lambda: 'audio_owner::the().release(audio_owner::Side::OUT, audio_owner::Role::VOICE);'
+          # Keep the microphone only while the wake word still listens (a session from the button, with it off).
+          - lambda: |-
+              audio_owner::the().release(id(hahmi_voice_on).state ? audio_owner::Side::OUT : audio_owner::Side::BOTH,
+                                         audio_owner::Role::VOICE);
   on_error:
+    - logger.log:
+        level: WARN
+        tag: hahmi
+        format: "Voice assistant error %s: %s"
+        args: [code.c_str(), message.c_str()]
+    - text_sensor.template.publish:
+        id: hahmi_voice_status
+        state: !lambda 'return "Error " + code + ": " + message;'
     - light.turn_on:
         id: board_led_strip
         red: 1.0
@@ -204,6 +237,10 @@ micro_wake_word:
       internal: true
   vad:
   on_wake_word_detected:
+    - logger.log:
+        tag: hahmi
+        format: "Wake word: %s"
+        args: [wake_word.c_str()]
     - if:
         condition:
           lambda: 'return wake_word == "Stop";'

@@ -1,0 +1,1302 @@
+{
+ "esp_screens_layout": 2,
+ "sourceGrid": {
+  "columns": 3,
+  "rows": 3
+ },
+ "layout": {
+  "title": "HA-HMI",
+  "homePageId": "8f30288bd119abce",
+  "pages": [
+   {
+    "id": "8f30288bd119abce",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "49b6e2e5ef2e5ed5",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Início"
+     },
+     "trailing": [
+      {
+       "id": "298a41860afb27ba",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "38c122cad4149980",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "bd20534fda8d3ffb",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "91c04a8f401707ed",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "c345437bb8d1becf"
+       }
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Sala",
+       "icon": "sofa"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "0173ec41972793f3",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "50fb7833fd859468"
+       }
+      },
+      "placement": {
+       "row": 0,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Teté",
+       "icon": "bed"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "a8ff5daadc305024",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "8bb7b4dc14b43006"
+       }
+      },
+      "placement": {
+       "row": 0,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Tixa João",
+       "icon": "bed"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "c1c0df258296643e",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "0c4e27b4be0f539b"
+       }
+      },
+      "placement": {
+       "row": 1,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Hall",
+       "icon": "door-closed"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "2921482d12a558a5",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "ae71f965820431d7"
+       }
+      },
+      "placement": {
+       "row": 1,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Garagem",
+       "icon": "garage"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "82505c7e486ec1c6",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "23703e5364fa33af"
+       }
+      },
+      "placement": {
+       "row": 1,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Exterior",
+       "icon": "tree"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "c947c45c141fc8b9",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "677ef30e9c9db688"
+       }
+      },
+      "placement": {
+       "row": 2,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "TV",
+       "icon": "television"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "7adf4d2c7d7ea803",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "ff1332b044d1c628"
+       }
+      },
+      "placement": {
+       "row": 2,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Tempo",
+       "icon": "weather-partly-cloudy"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "2cc8b7dedc0c71eb",
+      "content": {
+       "kind": "navigation",
+       "target": {
+        "kind": "page",
+        "pageId": "942d518f5fbe56cc"
+       }
+      },
+      "placement": {
+       "row": 2,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Ecrã",
+       "icon": "cog"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "c345437bb8d1becf",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "6e954591b08549cd",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Sala"
+     },
+     "trailing": [
+      {
+       "id": "8d0e1157c596e5ce",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "9385604717db424c",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "72074e40ec9a97a8",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "8a4bdeed66240bf4",
+      "content": {
+       "kind": "entity",
+       "entityId": "switch.sonoffcableplug2_sonoff_basic_relay"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Escalfeta",
+       "icon": "radiator"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "03be7a8f5e18c397",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.jms_lamp_light"
+      },
+      "placement": {
+       "row": 0,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz Monitor",
+       "icon": "desk-lamp"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "50fb7833fd859468",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "44cc35631bb01be5",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Quarto Teté"
+     },
+     "trailing": [
+      {
+       "id": "1f0651c596964470",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "9afff800d12b6e61",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "880dd7a8b0328843",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "632710ae0c05dc68",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.ms105b_quartoteresa_dimmerch1"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz Quarto",
+       "icon": "ceiling-light"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "366cb2e499229471",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.ms105b_quartoteresa_dimmerch2"
+      },
+      "placement": {
+       "row": 0,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz WC",
+       "icon": "light-recessed"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "9b424bef4dab6b6d",
+      "content": {
+       "kind": "entity",
+       "entityId": "switch.wallplug3"
+      },
+      "placement": {
+       "row": 0,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Tomada",
+       "icon": "power-socket-eu"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "63844992f3a89fc6",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.girafa_girafa_light"
+      },
+      "placement": {
+       "row": 1,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Girafa",
+       "icon": "floor-lamp"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "9428943f53f039a6",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.girafa_girafa_light2"
+      },
+      "placement": {
+       "row": 1,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Girafa 2",
+       "icon": "floor-lamp"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "8bb7b4dc14b43006",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "bb78adf84df82d06",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Quarto Tixa João"
+     },
+     "trailing": [
+      {
+       "id": "40e2841843f51a44",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "50689359909fa9d8",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "c2398621f2c53a21",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "36fa6ceadb10778b",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.benilamp_light"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Lua",
+       "icon": "lamp"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "a8e0c0821d1997f2",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.ikealamp1"
+      },
+      "placement": {
+       "row": 0,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Candeeiro",
+       "icon": "floor-lamp"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "8b42ead71fa06abf",
+      "content": {
+       "kind": "entity",
+       "entityId": "switch.sonoffcableplug_sonoff_basic_relay"
+      },
+      "placement": {
+       "row": 0,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Tomada",
+       "icon": "power-socket-eu"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "0c4e27b4be0f539b",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "88f5929fab652e11",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Hall"
+     },
+     "trailing": [
+      {
+       "id": "6cfe8ace0f028687",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "4aff9614f272f02b",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "ec9b20e3628dacd1",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "9b17042adeb127e0",
+      "content": {
+       "kind": "entity",
+       "entityId": "binary_sensor.porta_varanda_contact"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Varanda",
+       "icon": "door-closed"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "ae71f965820431d7",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "743c64b95694b1e7",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Garagem"
+     },
+     "trailing": [
+      {
+       "id": "52b4b1e313a75889",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "75b3ace06cc56c99",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "cb14caa9348ff525",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "25914445b89a8e24",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.luz_garagem"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz Carro",
+       "icon": "car"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "c81e79337867d7b5",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.luz_garagem_tasmotaconsumos"
+      },
+      "placement": {
+       "row": 0,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz Janela",
+       "icon": "window-closed-variant"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "7122ad37c1702d66",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.printerplug_desklight"
+      },
+      "placement": {
+       "row": 0,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz Secretária",
+       "icon": "desk-lamp"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "db59bba767e58c08",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.lamp2"
+      },
+      "placement": {
+       "row": 1,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz Gym",
+       "icon": "lightbulb"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "41be280a12a5cf28",
+      "content": {
+       "kind": "entity",
+       "entityId": "switch.pizero2w_wallplug"
+      },
+      "placement": {
+       "row": 1,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Printer",
+       "icon": "printer-3d"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "6304fb253948be83",
+      "content": {
+       "kind": "entity",
+       "entityId": "binary_sensor.0x00124b002344c38d_contact"
+      },
+      "placement": {
+       "row": 1,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Porta",
+       "icon": "door-closed"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "b25d2d65821a05e6",
+      "content": {
+       "kind": "entity",
+       "entityId": "binary_sensor.portao_garagem_contact"
+      },
+      "placement": {
+       "row": 2,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Portão",
+       "icon": "garage"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "23703e5364fa33af",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "305e63cd69ed3523",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Exterior"
+     },
+     "trailing": [
+      {
+       "id": "915e43d3feed3642",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "21725bbe168a0877",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "8b4847e5d41e033a",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "e7ee7d3921d7c7c4",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.sonnof_dual_r2"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz Portão",
+       "icon": "outdoor-lamp"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "dafbffdc6273d779",
+      "content": {
+       "kind": "entity",
+       "entityId": "light.luz_porta_garagem"
+      },
+      "placement": {
+       "row": 0,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Luz Porta",
+       "icon": "outdoor-lamp"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "48c95ef24a893eef",
+      "content": {
+       "kind": "entity",
+       "entityId": "sensor.meshtastic_jms1_1800938498_environment_temperature"
+      },
+      "placement": {
+       "row": 0,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Temperatura",
+       "icon": "thermometer"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "677ef30e9c9db688",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "b8528b430c0984b8",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "TV"
+     },
+     "trailing": [
+      {
+       "id": "45530d8959979835",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "3aa52bfb3b3e9bb4",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "8db1ca073514c44d",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "7f180bc04e11abcb",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.hacontrol_tv_power"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Energia",
+       "icon": "power"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "e7a7624dd51ebd15",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.hacontrol_tv_volume_up"
+      },
+      "placement": {
+       "row": 0,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Vol +",
+       "icon": "speaker"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "595c6d8902df0763",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.hacontrol_tv_channel_up"
+      },
+      "placement": {
+       "row": 0,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Canal +",
+       "icon": "remote-tv"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "cfe9c3fd79d98326",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.hacontrol_tv_mute"
+      },
+      "placement": {
+       "row": 1,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Mudo",
+       "icon": "speaker"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "7ddc354c027b2837",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.hacontrol_tv_volume_down"
+      },
+      "placement": {
+       "row": 1,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Vol -",
+       "icon": "speaker"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "1e1184683338eb46",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.hacontrol_tv_channel_down"
+      },
+      "placement": {
+       "row": 1,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Canal -",
+       "icon": "remote-tv"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "61dc6e7d0ba416c8",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.hacontrol_tv_source"
+      },
+      "placement": {
+       "row": 2,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Fonte",
+       "icon": "cast"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "ff1332b044d1c628",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "a216d18d5042d04c",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Tempo"
+     },
+     "trailing": [
+      {
+       "id": "b6d398c8e6675d25",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "100e5699200782d4",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "8431c619814904f3",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "9d87c5fbad5f61d3",
+      "content": {
+       "kind": "entity",
+       "entityId": "weather.forecast_home"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 2,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Tempo",
+       "presentation": "wide",
+       "display": "forecast"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "cb97193dc4769c00",
+      "content": {
+       "kind": "entity",
+       "entityId": "sensor.meshtastic_jms1_1800938498_environment_temperature"
+      },
+      "placement": {
+       "row": 0,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Exterior",
+       "icon": "thermometer"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "1e3d6ccddccabd86",
+      "content": {
+       "kind": "entity",
+       "entityId": "sensor.hmi_meal_today"
+      },
+      "placement": {
+       "row": 1,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Refeição hoje",
+       "icon": "silverware-fork-knife"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "1b8a23234247a9ed",
+      "content": {
+       "kind": "entity",
+       "entityId": "sensor.hmi_meal_tomorrow"
+      },
+      "placement": {
+       "row": 1,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Refeição amanhã",
+       "icon": "silverware-fork-knife"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "f4bca7722d9eaf77",
+      "content": {
+       "kind": "entity",
+       "entityId": "sensor.hmi_grocery_list"
+      },
+      "placement": {
+       "row": 1,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Compras",
+       "icon": "fridge"
+      },
+      "interaction": {}
+     }
+    ]
+   },
+   {
+    "id": "942d518f5fbe56cc",
+    "navigation": {
+     "excludeFromPagination": false
+    },
+    "topbar": {
+     "leading": [
+      {
+       "id": "45440bf9d28e2c5a",
+       "kind": "home"
+      }
+     ],
+     "title": {
+      "source": "text",
+      "text": "Ecrã"
+     },
+     "trailing": [
+      {
+       "id": "98020f7cdcaea70a",
+       "type": "wifi",
+       "content": "icon",
+       "show": "always"
+      },
+      {
+       "id": "0187625ed3445a21",
+       "type": "battery",
+       "content": "percent",
+       "show": "always"
+      },
+      {
+       "id": "32bf030f9f9ab0f4",
+       "type": "clock"
+      }
+     ]
+    },
+    "tiles": [
+     {
+      "id": "8bb63f6d490e4ddb",
+      "content": {
+       "kind": "entity",
+       "entityId": "switch.kitchen_home_assistant_control_hmi_voice_assistant"
+      },
+      "placement": {
+       "row": 0,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Voz",
+       "icon": "microphone"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "1e63bf54a654e429",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.kitchen_home_assistant_control_hmi_ask_the_voice_assistant"
+      },
+      "placement": {
+       "row": 0,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Perguntar",
+       "icon": "microphone"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "46237002aff08aff",
+      "content": {
+       "kind": "entity",
+       "entityId": "switch.kitchen_home_assistant_control_hmi_continued_conversation"
+      },
+      "placement": {
+       "row": 0,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Conversa contínua",
+       "icon": "microphone"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "b40b6cc0954d014c",
+      "content": {
+       "kind": "entity",
+       "entityId": "select.kitchen_home_assistant_control_hmi_e_paper_page"
+      },
+      "placement": {
+       "row": 1,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Papel",
+       "icon": "calendar"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "7c0ea30126a50eb6",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.kitchen_home_assistant_control_hmi_add_e_paper"
+      },
+      "placement": {
+       "row": 1,
+       "column": 1,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Atualizar papel",
+       "icon": "calendar"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "5279006db9756e3f",
+      "content": {
+       "kind": "entity",
+       "entityId": "button.kitchen_home_assistant_control_hmi_deep_sleep_now"
+      },
+      "placement": {
+       "row": 1,
+       "column": 2,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Desligar",
+       "icon": "sleep"
+      },
+      "interaction": {}
+     },
+     {
+      "id": "e565fe48b44efcf0",
+      "content": {
+       "kind": "builtin",
+       "name": "settings"
+      },
+      "placement": {
+       "row": 2,
+       "column": 0,
+       "columns": 1,
+       "rows": 1
+      },
+      "appearance": {
+       "label": "Definições"
+      },
+      "interaction": {}
+     }
+    ]
+   }
+  ]
+ }
+}

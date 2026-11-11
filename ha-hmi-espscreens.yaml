@@ -10,6 +10,11 @@ substitutions:
   FONT_DIR: "fonts"
   DEVICE_NAME: "ha-hmi"
   DEVICE_FRIENDLY_NAME: "Home Assistant Control HMI"
+  # Reported as a catalog board with the same glass, since the add-on doesn't know lab-hahmi and falls back to the CYD.
+  BOARD_ID: "waveshare35"
+  # Smaller tile names and values than the look's 17 and 16 px, so names fit a 3 x 3 tile.
+  FONT_LABEL_SIZE: "14"
+  FONT_SUBLABEL_SIZE: "13"
 
 packages:
   core: !include packages/core.yaml
@@ -17,6 +22,7 @@ packages:
   # Options as Home Assistant entities; take a line out to build without it.
   deep_sleep: !include ha-hmi-deep-sleep.yaml
   voice: !include ha-hmi-voice.yaml
+  epaper: !include ha-hmi-epaper.yaml
 
 external_components:
   - source:
