@@ -12,9 +12,12 @@ substitutions:
   DEVICE_FRIENDLY_NAME: "Home Assistant Control HMI"
   # Reported as a catalog board with the same glass, since the add-on doesn't know lab-hahmi and falls back to the CYD.
   BOARD_ID: "waveshare35"
-  # Smaller tile names and values than the look's 17 and 16 px, so names fit a 3 x 3 tile.
-  FONT_LABEL_SIZE: "14"
-  FONT_SUBLABEL_SIZE: "13"
+  # Every text font about 0.7 of the look's (17/16/26/20/37 px), so names fit a 3 x 3 tile and the other pages match.
+  FONT_LABEL_SIZE: "12"
+  FONT_SUBLABEL_SIZE: "11"
+  FONT_HEADLINE_SIZE: "18"
+  FONT_SUBLABEL_BIG_SIZE: "14"
+  FONT_WATCH_VALUE_SIZE: "26"
 
 packages:
   core: !include packages/core.yaml
