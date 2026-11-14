@@ -8,6 +8,11 @@
 // takes some 30 KB out of main.cpp. docs/RELEASING.md tells how to recognise the limit.
 #include "esphome/core/log.h"
 #include "runtime_tiles.h"
+#if defined(USE_ESP32) && !defined(ESP_SCREEN_HOST)
+#include <nvs.h>
+#include <nvs_flash.h>
+#define LAYOUT_CACHE 1
+#endif
 namespace runtime_tiles {
 static bool parse_bar_item(JsonVariant value, header_bar::Item &item) {
     if (!value.is<JsonObject>()) return false;
@@ -45,6 +50,91 @@ static bool parse_bar(JsonVariant items, header_bar::Bar &out) {
   out.received = true;
   return true;
 }
+// The last complete layout, kept in NVS as the messages it arrived in and played back through receive() at the start, so
+// the tiles stand before Wi-Fi and Tessera answer; Tessera's begin of the same revision then changes nothing (Begin::unchanged).
+// Needs PSRAM for the buffer and room in NVS; a board without either simply waits for Tessera as before.
+namespace layout_cache {
+#ifdef LAYOUT_CACHE
+constexpr size_t MAX_BYTES = 256 * 1024, HEADROOM = 16 * 1024;
+constexpr const char *NAMESPACE = "tessera", *BLOB = "layout1", *SUM = "sum1";
+inline uint8_t *buffer = nullptr;
+inline size_t used = 0, capacity = 0;
+inline bool recording = false, replaying = false;
+inline uint32_t sum(const uint8_t *data, size_t size) {
+  uint32_t hash = 2166136261u;
+  for (size_t i = 0; i < size; ++i) hash = (hash ^ data[i]) * 16777619u;
+  return hash;
+}
+inline void forget() {
+  if (buffer) heap_caps_free(buffer);
+  buffer = nullptr;
+  used = capacity = 0;
+  recording = false;
+}
+inline bool add(const std::string &payload) {
+  const size_t need = used + 4 + payload.size();
+  if (need > MAX_BYTES) return false;
+  if (need > capacity) {
+    const size_t grown = std::min(MAX_BYTES, std::max(need, capacity ? capacity * 2 : size_t{16 * 1024}));
+    auto *next = static_cast<uint8_t *>(heap_caps_realloc(buffer, grown, MALLOC_CAP_SPIRAM));
+    if (!next) return false;
+    buffer = next;
+    capacity = grown;
+  }
+  const uint32_t length = payload.size();
+  memcpy(buffer + used, &length, 4);
+  memcpy(buffer + used + 4, payload.data(), length);
+  used = need;
+  return true;
+}
+inline void save() {
+  if (!buffer || !used) return;
+  const uint32_t hash = sum(buffer, used);
+  nvs_handle_t handle;
+  if (nvs_open(NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return;
+  uint32_t old = 0;
+  nvs_stats_t stats;
+  if (nvs_get_u32(handle, SUM, &old) == ESP_OK && old == hash) {
+    // Already what is stored.
+  } else if (nvs_get_stats(nullptr, &stats) != ESP_OK || stats.free_entries * 32 < used * 2 + HEADROOM) {
+    ESP_LOGW("layout_cache", "no room in NVS for %u B, the layout is not kept", (unsigned) used);
+  } else {
+    esp_err_t err = nvs_set_blob(handle, BLOB, buffer, used);
+    if (err == ESP_OK) err = nvs_set_u32(handle, SUM, hash);
+    if (err == ESP_OK) err = nvs_commit(handle);
+    if (err == ESP_OK) ESP_LOGI("layout_cache", "layout kept in flash: %u B", (unsigned) used);
+    else ESP_LOGW("layout_cache", "layout not kept: %s", esp_err_to_name(err));
+  }
+  nvs_close(handle);
+}
+inline void drop() {
+  nvs_handle_t handle;
+  if (nvs_open(NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return;
+  nvs_erase_key(handle, SUM);
+  nvs_commit(handle);
+  nvs_close(handle);
+}
+// Called for every packet the screen accepted: the messages of a layout transfer are collected and kept at its commit.
+inline void observe(const std::string &op, const std::string &payload, const std::string &result) {
+  if (replaying) return;
+  if (op == "begin") {
+    forget();
+    if (result == "Loading tiles") recording = add(payload);
+    return;
+  }
+  if (!recording) return;
+  if (op == "page" || op == "tile") {
+    if (result != "Loading tiles" || !add(payload)) forget();
+  } else if (op == "commit") {
+    // The commit is kept too: without it the replay never makes the transfer active.
+    if (result == "Synced" && transfer.active && add(payload)) save();
+    forget();
+  }
+}
+#else
+inline void observe(const std::string &, const std::string &, const std::string &) {}
+#endif
+}  // namespace layout_cache
 // Reading what Home Assistant sent. Every loop here walks a JsonArray that ArduinoJson hands back from the
 // document, and GCC 14 cannot tell that apart from a reference into the temporary the call was made on:
 // `for (JsonVariant v : root["slots"].as<JsonArray>())` raises -Wdangling-reference, eighteen times in this
@@ -63,6 +153,7 @@ std::string receive(const std::string &payload) {
   packet_hash.add(payload);
   uint32_t packet_sequence = 0;
   bool sequenced = false;
+  std::string seen_op;
   const bool accepted = esphome::json::parse_json(payload, [&](JsonObject root) -> bool {
     if (root["v"].as<int>() != page_protocol::VERSION) {
       const auto problem = root["v"].is<unsigned>() && root["v"].as<unsigned>() == 1 ? ProtocolProblem::old_addon : ProtocolProblem::unsupported;
@@ -71,6 +162,7 @@ std::string receive(const std::string &payload) {
       return false;
     }
     auto op = string(root["op"]);
+    seen_op = op;
     reply_memory = op == "hello" || op == "ping";
 #ifdef SWIPE_PROFILE
     // Diagnostic builds only, and outside the add-on's session so a bench script can send them (docs/SWIPE_PROFILE.md).
@@ -1388,8 +1480,65 @@ std::string receive(const std::string &payload) {
     result = model.ready() ? "Synced" : "Loading tiles";
     return true;
   });
-  if (accepted && sequenced) transfer.accepted(packet_sequence, packet_hash.value);
+  if (accepted && sequenced) {
+    transfer.accepted(packet_sequence, packet_hash.value);
+    layout_cache::observe(seen_op, payload, result);
+  }
   return result;
 }
 #pragma GCC diagnostic pop
+// At the start: the layout kept at the last commit goes through receive() as if Tessera sent it, under the session it
+// came in. Anything that does not apply leaves the screen as if nothing was kept, and the kept copy is dropped.
+void restore_layout() {
+#ifdef LAYOUT_CACHE
+  if (!enabled || model.configured || transfer.granted) return;
+  nvs_handle_t handle;
+  if (nvs_open(layout_cache::NAMESPACE, NVS_READONLY, &handle) != ESP_OK) return;
+  size_t size = 0;
+  uint32_t want = 0;
+  uint8_t *data = nullptr;
+  if (nvs_get_u32(handle, layout_cache::SUM, &want) == ESP_OK &&
+      nvs_get_blob(handle, layout_cache::BLOB, nullptr, &size) == ESP_OK && size > 4 && size <= layout_cache::MAX_BYTES)
+    data = static_cast<uint8_t *>(heap_caps_malloc(size, MALLOC_CAP_SPIRAM));
+  if (data && nvs_get_blob(handle, layout_cache::BLOB, data, &size) != ESP_OK) { heap_caps_free(data); data = nullptr; }
+  nvs_close(handle);
+  if (!data) return;
+  size_t at = 0, count = 0;
+  bool ok = layout_cache::sum(data, size) == want;
+  uint32_t length = 0;
+  uint64_t lease = 0;
+  if (ok) {
+    memcpy(&length, data, 4);
+    ok = length > 0 && 4 + length <= size &&
+         esphome::json::parse_json(std::string(reinterpret_cast<const char *>(data) + 4, length),
+                                   [&](JsonObject root) -> bool { return page_protocol::key(string(root["session"]), lease); });
+  }
+  if (ok) {
+    transfer = page_protocol::Transfer{};
+    transfer.grant(1, lease);
+    layout_cache::replaying = true;
+    while (ok && at + 4 <= size) {
+      memcpy(&length, data + at, 4);
+      at += 4;
+      if (length == 0 || at + length > size) { ok = false; break; }
+      const std::string result = receive(std::string(reinterpret_cast<const char *>(data) + at, length));
+      at += length;
+      ++count;
+      ok = result == "Loading tiles" || (at == size && result == "Synced");
+    }
+    layout_cache::replaying = false;
+    ok = ok && at == size && model.configured && transfer.active;
+  }
+  heap_caps_free(data);
+  if (!ok) {
+    ESP_LOGW("layout_cache", "the kept layout does not apply (%u messages), dropped", (unsigned) count);
+    if (transfer.granted) { abandon_layout(); transfer = page_protocol::Transfer{}; }
+    layout_cache::drop();
+    return;
+  }
+  // Nothing has been heard from Tessera yet.
+  last_received = 0;
+  ESP_LOGI("layout_cache", "layout from flash: %u messages", (unsigned) count);
+#endif
+}
 }  // namespace runtime_tiles

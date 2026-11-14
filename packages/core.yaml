@@ -413,6 +413,8 @@ esphome:
           brightness: !lambda "return screen_settings::current.brightness / 100.0f;"
       - script.execute: show_tile_page
       - lambda: 'if (!id(ui_refresh).is_running()) id(ui_refresh).execute();'
+      # The tiles of the last layout, from flash, so the screen does not wait for Wi-Fi and Tessera (page_receiver.cpp).
+      - lambda: 'runtime_tiles::restore_layout();'
       - if:
           condition:
             lambda: 'return std::string("${CALIBRATION_ON_BOOT}") == "true";'
