@@ -10,22 +10,11 @@ substitutions:
   FONT_DIR: "fonts"
   DEVICE_NAME: "ha-hmi"
   DEVICE_FRIENDLY_NAME: "Home Assistant Control HMI"
-  # Reported as a catalog board with the same glass, since the add-on doesn't know lab-hahmi and falls back to the CYD.
-  BOARD_ID: "waveshare35"
-  # Every text font about 0.7 of the look's (17/16/26/20/37 px), so names fit a 3 x 3 tile and the other pages match.
-  FONT_LABEL_SIZE: "12"
-  FONT_SUBLABEL_SIZE: "11"
-  FONT_HEADLINE_SIZE: "18"
-  FONT_SUBLABEL_BIG_SIZE: "14"
-  FONT_WATCH_VALUE_SIZE: "26"
 
 packages:
   core: !include packages/core.yaml
-  board: !include packages/boards/lab-hahmi.yaml
-  # Options as Home Assistant entities; take a line out to build without it.
-  deep_sleep: !include ha-hmi-deep-sleep.yaml
-  voice: !include ha-hmi-voice.yaml
-  epaper: !include ha-hmi-epaper.yaml
+  # The board, the options and the TV remote, shared with packages/ha-hmi.yaml.
+  device: !include ha-hmi-device.yaml
 
 external_components:
   - source:
@@ -47,41 +36,3 @@ wifi:
   password: !secret wifi_password
   # Mains-powered panel: no modem sleep, so HA updates and OTA arrive without beacon latency.
   power_save_mode: none
-
-# The buttons of the Samsung TV's remote, sent by the board's IR transmitter.
-button:
-  - platform: template
-    name: TV Power
-    icon: mdi:power
-    on_press:
-      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E040BF, nbits: 32}
-  - platform: template
-    name: TV Volume Up
-    icon: mdi:volume-plus
-    on_press:
-      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E0E01F, nbits: 32}
-  - platform: template
-    name: TV Volume Down
-    icon: mdi:volume-minus
-    on_press:
-      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E0D02F, nbits: 32}
-  - platform: template
-    name: TV Mute
-    icon: mdi:volume-mute
-    on_press:
-      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E0F00F, nbits: 32}
-  - platform: template
-    name: TV Channel Up
-    icon: mdi:arrow-up-bold
-    on_press:
-      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E048B7, nbits: 32}
-  - platform: template
-    name: TV Channel Down
-    icon: mdi:arrow-down-bold
-    on_press:
-      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E008F7, nbits: 32}
-  - platform: template
-    name: TV Source
-    icon: mdi:import
-    on_press:
-      - remote_transmitter.transmit_samsung: {transmitter_id: board_ir_transmitter, data: 0xE0E0807F, nbits: 32}

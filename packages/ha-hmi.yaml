@@ -1,0 +1,21 @@
+# The package the HA-HMI builds from over GitHub, from this private fork: Home Assistant's /config/esphome/ha-hmi.yaml
+# names it under `packages: display:` with its own name, keys and the GITHUB_USER / GITHUB_TOKEN the clone needs.
+substitutions:
+  GITHUB_REF: "ha-hmi"
+  # The fonts come from upstream: a private repository's raw files need a login ESPHome's font fetch can't give.
+  FONT_DIR: "https://raw.githubusercontent.com/MaxGramser/homeassistant_espscreen/main/fonts"
+
+packages:
+  core: !include core.yaml
+  device: !include ../ha-hmi-device.yaml
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/jotaemesousa/homeassistant_espscreen.git
+      ref: ${GITHUB_REF}
+      username: ${GITHUB_USER}
+      password: ${GITHUB_TOKEN}
+      path: components
+    refresh: 0s
+    components: [xpt2046, flash_layout, smart_display]
