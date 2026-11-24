@@ -10,6 +10,9 @@
 # in use (music, an announcement, the voice assistant). The 3.3 V rail of the display and the other parts is switched
 # off while it sleeps, as ha-hmi.yaml did.
 #
+# It also wakes by itself at 07:00 every day: it waits for Home Assistant, lets the e-paper draw the new day, and sleeps
+# again with the backlight off. The time comes from Home Assistant, so a board that never had it retries every hour.
+#
 # No esphome: on_boot here: it would replace the core's boot block whole, and the screen would never take its tiles.
 globals:
   - id: hahmi_dimmed_since
@@ -33,6 +36,13 @@ deep_sleep:
 binary_sensor:
   - id: !extend board_touch_pad
     wakeup_threshold: 1500
+  - platform: template
+    id: hahmi_woke_by_timer
+    internal: true
+    lambda: 'return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER;'
+    trigger_on_initial_state: true
+    on_press:
+      - script.execute: hahmi_morning_update
 
 switch:
   - platform: template
@@ -91,4 +101,32 @@ script:
       - lambda: |-
           gpio_hold_en(GPIO_NUM_21);
           gpio_deep_sleep_hold_en();
-      - deep_sleep.enter: hahmi_deep_sleep
+      - if:
+          condition:
+            lambda: 'return id(homeassistant_time).now().is_valid();'
+          then:
+            - deep_sleep.enter:
+                id: hahmi_deep_sleep
+                until: "07:00:00"
+                time_id: homeassistant_time
+          else:
+            - deep_sleep.enter:
+                id: hahmi_deep_sleep
+                sleep_duration: 1h
+  # The 07:00 wake: Home Assistant's states arrive, each starts the e-paper's draw (5 s settle), and once it is drawn the
+  # board sleeps again.
+  - id: hahmi_morning_update
+    mode: single
+    then:
+      - logger.log: "Woke for the morning e-paper update"
+      - wait_until:
+          condition:
+            api.connected:
+          timeout: 90s
+      - light.turn_off: back_light
+      - delay: 8s
+      - wait_until:
+          condition:
+            lambda: 'return !id(hahmi_epaper_draw).is_running();'
+          timeout: 30s
+      - script.execute: hahmi_power_off
