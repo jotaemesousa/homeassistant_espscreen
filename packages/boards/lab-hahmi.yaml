@@ -1,0 +1,284 @@
+# ESP Screens - lab-hahmi: the HA-HMI, a custom ESP32-S3 (N16R8) panel with a 3.5-inch ILI9488 320x480 SPI display and
+# an XPT2046 resistive touch panel on one SPI bus. A lab board (tools/new_board.py, docs/ADDING_A_BOARD.md): it stays
+# out of the catalog and out of Git, and builds through a screen's own YAML in the root of this working copy.
+#
+# Ported from the hand-made ESPHome configuration of the same device (ha-hmi.yaml): the pins, the display's init
+# sequence, the touch panel's raw range and the hardware every unit has (the 3.3 V rail, the PIR, the SK6812 LEDs, the
+# IR transmitter and receiver, the battery on an ADC pin, an I2S amplifier and an I2S microphone). Its hand-built LVGL
+# pages became the tiles ESP Screens sends; what has no place in ESP Screens (the 2.9-inch e-paper, deep sleep, the
+# wake word on the screen itself) is not configured here.
+#
+# docs/PROFILES.md says how the files of a screen fit together.
+packages:
+  build: !include ../hardware/esp-idf.yaml
+  look: !include ../looks/standard.yaml
+  touch: !include ../features/resistive-touch.yaml
+  backlight: !include ../features/backlight.yaml
+  self_test: !include ../features/self-test.yaml
+  # The battery's voltage on GPIO4 and its level in the top bar (docs/BATTERY.md).
+  battery_adc: !include ../features/battery-adc.yaml
+  battery: !include ../features/battery-voltage.yaml
+  # The amplifier and the microphone as the screen's audio: a media player in Home Assistant, and the speaker and
+  # microphone a voice plugin needs (docs/PLUGINS.md).
+  audio: !include ../features/audio.yaml
+
+substitutions:
+  # The key of this board file; the firmware reports it so ESP Screens knows what board a screen is.
+  BOARD_ID: "lab-hahmi"
+  DEVICE_NAME: "lab-hahmi-new"
+  DEVICE_FRIENDLY_NAME: "My HA-HMI"
+
+  # The glass: the panel's own pixels and its density, 577 diagonal pixels over 3.5 inches, as the other 3.5-inch
+  # 320x480 boards (wt32sc01plus, waveshare35).
+  PANEL_W: "320"
+  PANEL_H: "480"
+  DISPLAY_DPI: "164.825"
+  # The LVGL angle that lays this panel out lying down (480 x 320), as ha-hmi.yaml turned it. Standing up is a quarter
+  # further.
+  ROTATION_LANDSCAPE: "270"
+  # The tile grid: columns and rows of cells lying down, and standing up.
+  GRID_COLS: "2"
+  GRID_ROWS: "2"
+  GRID_COLS_PORTRAIT: "1"
+  GRID_ROWS_PORTRAIT: "3"
+  # An ESP32-S3 with PSRAM: the 128 tiles on 24 pages of such a board (docs/TILE_MEMORY.md).
+  SCREEN_MAX_TILES: "128"
+  SCREEN_MAX_PAGES: "24"
+  SCREEN_MAX_BAR_ITEMS: "12"
+  LVGL_BUFFER_SIZE: "12%"                       # LVGL's draw buffer as a share of the screen, in the chip's own memory
+
+  # Hardware a screen's own YAML may change (docs/EASY_SETUP.md, "Hardware-specific YAML overrides").
+  DISPLAY_DATA_RATE: "40MHz"                    # the display's SPI clock, as ha-hmi.yaml ran it
+  BACKLIGHT_FREQUENCY: "1000Hz"                 # the backlight's PWM, as ha-hmi.yaml ran it
+  # The touch panel against the display's own pixels: ha-hmi.yaml mirrored Y and nothing else.
+  TOUCH_MIRROR_Y: "true"
+  # The XPT2046's raw range ha-hmi.yaml was calibrated to; the wizard measures the rest on the first start
+  # (docs/CALIBRATING.md).
+  TOUCH_CAL_X_MIN: "280"
+  TOUCH_CAL_X_MAX: "3834"
+  TOUCH_CAL_Y_MIN: "229"
+  TOUCH_CAL_Y_MAX: "3853"
+
+  # The battery (docs/BATTERY.md): ADC1 on GPIO4. ha-hmi.yaml multiplied the pin by 1.58 and then by 4.2 / 3.2, so the
+  # divider is 2.074 in all; one lithium cell, empty at 3.3 V and full at 4.2 V (the feature's defaults).
+  BATTERY_PIN: GPIO4
+  BATTERY_DIVIDER: "2.074"
+
+  # The audio (features/audio.yaml): an I2S amplifier with no volume register, so the speaker turns ESPHome's volume
+  # down in software, -49 dB at 0 to 0 dB at 1 (ESPHome's i2s_audio speaker), and an I2S microphone on a bus of its own.
+  AUDIO_DOUT_PIN: GPIO12
+  AUDIO_DIN_PIN: GPIO7
+  AUDIO_DAC_DB_AT_0: "-49"
+  AUDIO_DAC_DB_AT_1: "0"
+
+# ============================================================
+# No need to edit below this line.
+# ============================================================
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  cpu_frequency: 240MHz
+  framework:
+    sdkconfig_options:
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+
+# The 8 MB of octal PSRAM in the module.
+psram:
+  mode: octal
+  speed: 80MHz
+
+# One SPI bus for the display (CS GPIO40) and the touch controller (CS GPIO18). The e-paper's bus (GPIO17, GPIO10)
+# stays unused.
+spi:
+  - id: lcd
+    clk_pin: GPIO38
+    mosi_pin: GPIO41
+    miso_pin: GPIO47
+
+output:
+  # The backlight, lit at a high level.
+  - platform: ledc
+    pin: GPIO46
+    id: gpio_backlight_pwm
+    frequency: ${BACKLIGHT_FREQUENCY}
+
+switch:
+  # The 3.3 V rail of the display, the touch panel and the other parts, on while GPIO21 is low: on from the start and
+  # never switched off, as standby darkens the backlight, not the panel.
+  - platform: gpio
+    id: board_rail_3v3
+    internal: true
+    restore_mode: ALWAYS_ON
+    pin:
+      number: GPIO21
+      inverted: true
+  # Wake on motion: the PIR wakes the screen from standby when someone walks up to it. On at first, kept over a
+  # restart; a switch in Home Assistant.
+  - platform: template
+    id: board_wake_on_motion
+    name: "Wake on motion"
+    icon: "mdi:motion-sensor"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+binary_sensor:
+  # The PIR on GPIO2, high while it sees motion: a motion sensor in Home Assistant, and the screen's wake while Wake on
+  # motion is on, the same as Home Assistant's Wake button.
+  - platform: gpio
+    id: board_motion
+    name: "Motion"
+    device_class: motion
+    pin: GPIO2
+    on_press:
+      - if:
+          condition:
+            switch.is_on: board_wake_on_motion
+          then:
+            - button.press: wake_button
+  # The button on GPIO0 (the boot button, low while pressed): the same as Home Assistant's Wake and Sleep buttons. It
+  # also wakes the board from deep sleep (ha-hmi-deep-sleep.yaml), hence allow_other_uses.
+  - platform: gpio
+    id: board_button
+    name: "Button"
+    pin:
+      number: GPIO0
+      inverted: true
+      mode: {input: true, pullup: true}
+      ignore_strapping_warning: true
+      allow_other_uses: true
+    on_press:
+      - if:
+          condition:
+            lambda: 'return id(display_dimmed);'
+          then:
+            - button.press: wake_button
+          else:
+            - button.press: sleep_button
+  # The capacitive touch pad on GPIO3.
+  - platform: esp32_touch
+    id: board_touch_pad
+    name: "Touch Button"
+    pin: GPIO3
+    threshold: 1000
+    on_press:
+      - button.press: wake_button
+
+esp32_touch:
+  setup_mode: false
+
+light:
+  # The six SK6812 LEDs on GPIO48, as a light in Home Assistant, off after every start.
+  - platform: esp32_rmt_led_strip
+    id: board_led_strip
+    name: "LED strip"
+    pin: GPIO48
+    chipset: SK6812
+    num_leds: 6
+    rgb_order: GRB
+    rmt_symbols: 48
+    default_transition_length: 0s
+    restore_mode: ALWAYS_OFF
+    effects:
+      - pulse:
+          name: Slow Pulse
+          transition_length: 250ms
+          update_interval: 250ms
+          min_brightness: 0.5
+          max_brightness: 1.0
+      - pulse:
+          name: Fast Pulse
+          transition_length: 100ms
+          update_interval: 100ms
+          min_brightness: 0.5
+          max_brightness: 1.0
+      - addressable_scan:
+          name: Scanning
+          move_interval: 120ms
+          scan_width: 1
+
+# The IR transmitter (GPIO8) and receiver (GPIO20), as Home Assistant's infrared proxies; a screen's own YAML adds the
+# buttons of its own remote (remote_transmitter.transmit_*).
+remote_transmitter:
+  - id: board_ir_transmitter
+    pin: GPIO8
+    carrier_duty_percent: 50
+    non_blocking: true
+    rmt_symbols: 48
+
+remote_receiver:
+  - id: board_ir_receiver
+    pin:
+      number: GPIO20
+      inverted: true
+    tolerance: 25%
+    filter: 50us
+    idle: 10ms
+    rmt_symbols: 192
+
+infrared:
+  - platform: ir_rf_proxy
+    name: "IR Transmitter"
+    remote_transmitter_id: board_ir_transmitter
+  - platform: ir_rf_proxy
+    name: "IR Receiver"
+    receiver_frequency: 38kHz
+    remote_receiver_id: board_ir_receiver
+
+# The audio as ha-hmi.yaml wires it: the amplifier's I2S bus (LRCLK GPIO14, BCLK GPIO13, data GPIO12) and the
+# microphone's (WS GPIO5, SCK GPIO6, data GPIO7).
+i2s_audio:
+  - id: ts_speaker_bus
+    i2s_lrclk_pin: GPIO14
+    i2s_bclk_pin: GPIO13
+  - id: ts_mic_bus
+    i2s_lrclk_pin: GPIO5
+    i2s_bclk_pin: GPIO6
+
+# The amplifier has no control interface: no audio_dac, and the speaker's own software volume instead.
+speaker:
+  - id: !extend ts_speaker_out
+    audio_dac: !remove
+
+# The microphone takes 32-bit slots (64 clocks a frame), as ha-hmi.yaml read it.
+microphone:
+  - id: !extend ts_microphone
+    bits_per_sample: 32bit
+
+# XPT2046 on the display's bus, polled at 20 Hz as ha-hmi.yaml did. The core sets the transform (TOUCH_MIRROR_Y).
+touchscreen:
+  - platform: xpt2046
+    id: ts_touch
+    spi_id: lcd
+    display: my_display
+    cs_pin: GPIO18
+    update_interval: 50ms
+    threshold: 400
+
+# ESPHome's mipi_spi knows the ILI9488 by name; the gamma below is the one ha-hmi.yaml ran.
+display:
+  - platform: mipi_spi
+    id: my_display
+    spi_id: lcd
+    model: ILI9488_A
+    data_rate: ${DISPLAY_DATA_RATE}
+    cs_pin: GPIO40
+    dc_pin: GPIO42
+    reset_pin: GPIO39
+    color_order: BGR
+    pixel_mode: 18bit
+    invert_colors: false
+    update_interval: never
+    auto_clear_enabled: false
+    # Native panel dimensions (portrait); LVGL turns the picture (ROTATION_LANDSCAPE), never a display transform.
+    dimensions:
+      width: 320
+      height: 480
+    init_sequence:
+      - [0xE0, 0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00]
+      - delay 10ms
+      - [0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F]
+      - delay 10ms
